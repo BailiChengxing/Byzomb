@@ -159,15 +159,10 @@ def main():
                     pygame.mixer.music.load(bgm_path2)
                     pygame.mixer.music.set_volume(0.6) # 设置音量
                     pygame.mixer.music.play(-1) # 循环播放音乐
-            player_world_x = max(0, min(player_world_x, WORLD_WIDTH - PLAYER_SIZE))
-            player_world_y = max(0, min(player_world_y, WORLD_HEIGHT - PLAYER_SIZE))
-
-            cam_x = LOGIC_W//2 - (player_world_x + PLAYER_SIZE//2)
-            cam_y = LOGIC_H//2 - (player_world_y + PLAYER_SIZE//2)
 
             # 背景渲染
-            offset_x = cam_x % TILE_W
-            offset_y = cam_y % TILE_H
+            offset_x = (LOGIC_W//2 - (player_world_x + PLAYER_SIZE//2)) % TILE_W
+            offset_y = (LOGIC_H//2 - (player_world_y + PLAYER_SIZE//2)) % TILE_H
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img2, (x + offset_x, y + offset_y))
@@ -197,6 +192,16 @@ def main():
             if keys[pygame.K_d]: player_world_x += player_speed
             if keys[pygame.K_w]: player_world_y -= player_speed
             if keys[pygame.K_s]: player_world_y += player_speed
+
+
+            player_world_x = max(0, min(player_world_x, WORLD_WIDTH - PLAYER_SIZE))
+            player_world_y = max(0, min(player_world_y, WORLD_HEIGHT - PLAYER_SIZE))
+
+            cam_x = (LOGIC_W//2 - (player_world_x + PLAYER_SIZE//2))
+            cam_y = (LOGIC_H//2 - (player_world_y + PLAYER_SIZE//2))
+
+            offset_x = cam_x % TILE_W
+            offset_y = cam_y % TILE_H
             
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
