@@ -28,6 +28,20 @@ def main():
     # 背景音乐加载
     bgm_path = "codemao/music/bgm.mp3"
     bgm_path2 = "codemao/music/bgm2.mp3"
+    #title_img图片加载
+    title_img = pygame.image.load("codemao/UI/Byzomb.png").convert_alpha()
+    title_img = pygame.transform.scale(title_img, (1716, 500))
+    # 开始按钮图片加载
+    # 按钮尺寸（根据你的图片实际大小调整）
+    BTN_W, BTN_H = 912.5, 322.5
+
+    # 加载常态图
+    btn_normal = pygame.image.load("codemao/UI/buttun1.png").convert_alpha()
+    btn_normal = pygame.transform.scale(btn_normal, (BTN_W, BTN_H))
+
+    # 加载悬停图（比如带光效的图）
+    btn_hover = pygame.image.load("codemao/UI/buttun2.png").convert_alpha()
+    btn_hover = pygame.transform.scale(btn_hover, (BTN_W, BTN_H))
 
     # 角色动画加载
     PLAYER_SIZE = 180
@@ -113,6 +127,17 @@ def main():
         txt = ui_font.render(text, True, (255, 255, 255))
         canvas.blit(txt, txt.get_rect(center=(x + w/2, y + h/2)))
         return is_hover and pygame.mouse.get_pressed()[0]
+    def start_btn(img_normal, img_hover, x, y):
+    # 1. 获取逻辑鼠标位置
+        l_mx, l_my = get_logic_mouse()
+        # 2. 获取图片矩形区域用于碰撞检测
+        rect = img_normal.get_rect(topleft=(x, y))
+        is_hover = rect.collidepoint(l_mx, l_my)
+        curr_img = img_hover if is_hover else img_normal
+        canvas.blit(curr_img, (x, y))
+        
+        # 5. 返回是否被点击
+        return is_hover and pygame.mouse.get_pressed()[0]
 
     # --- 5. 主循环 ---
     while True:
@@ -146,9 +171,14 @@ def main():
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img2, (x + offset_x, y + offset_y))
-            msg = title_font.render(title, True, (255, 255, 255))
-            canvas.blit(msg, msg.get_rect(center=(LOGIC_W//2, LOGIC_H//3)))
-            if draw_btn("开始游戏", LOGIC_W//2-150, LOGIC_H//2, 300, 80, (50, 150, 255)):
+            #msg = title_font.render(title, True, (255, 255, 255))
+            #canvas.blit(msg, msg.get_rect(center=(LOGIC_W//2, LOGIC_H//3)))
+            title_x = LOGIC_W // 2 - title_img.get_width() // 2
+            title_y = 200  # 距离顶部 200 像素
+            canvas.blit(title_img, (title_x, title_y))
+            btn_x = LOGIC_W // 2 - BTN_W // 2
+            btn_y = LOGIC_H // 2
+            if start_btn(btn_normal, btn_hover, btn_x, btn_y):
                 scene = 'GAME'
                 enemies = [] # 重置敌人
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
