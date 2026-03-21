@@ -66,3 +66,4 @@ if __name__ == "__main__":
     print(my_gun.ls())
     my_gun.reload()
     print(my_gun.ls())
+    print("test")
