@@ -14,7 +14,7 @@ def main():
 
     screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
     canvas = pygame.Surface((LOGIC_W, LOGIC_H))
-    title="变异狂潮-十周年纪念版"
+    title="变异狂潮-十周年纪念版demo"
     pygame.display.set_caption(title)
     icon_img = pygame.image.load("codemao/r-logo.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
@@ -34,6 +34,9 @@ def main():
     #title_img图片加载
     title_img = pygame.image.load("codemao/UI/Byzomb.png").convert_alpha()
     title_img = pygame.transform.scale(title_img, (1716, 500))
+    #加载围栏
+    move_x =5750
+    move_y =(96/230)*move_x  #可移动距离大小
     # 开始按钮图片加载
     # 按钮尺寸（根据你的图片实际大小调整）
     BTN_W, BTN_H = 912.5, 322.5
@@ -45,6 +48,29 @@ def main():
     # 加载悬停图（比如带光效的图）
     btn_hover = pygame.image.load("codemao/UI/buttun2.png").convert_alpha()
     btn_hover = pygame.transform.scale(btn_hover, (BTN_W, BTN_H))
+
+    #加载围栏
+    fence=pygame.image.load("codemao/Fence.png").convert_alpha()
+    size=move_x
+    fence= pygame.transform.scale(fence, (size, (61/1128)*size))
+
+    '''def move_item(file,size,x,y):#定义动类型物品
+        img = pygame.image.load(file).convert_alpha()
+        width = img.get_width()   # 获取宽度
+        height = img.get_height() # 获取高度
+        ratio = height / width  # 计算宽高比
+        img = pygame.transform.scale(img, (size, int(size / ratio)))
+        item_draw_x = x + cam_x
+        item_draw_y = y + cam_y
+        #只有当物品在屏幕范围内时才绘制（性能优化）
+        if -100 < item_draw_x < LOGIC_W + 100 and -100 < item_draw_y < LOGIC_H + 100:
+            canvas.blit(img, (item_draw_x, item_draw_y))
+    '''
+    def move_item(img,x,y):#定义动类型物品绘制
+        item_draw_x = x + cam_x
+        item_draw_y = y + cam_y
+        canvas.blit(img, (item_draw_x, item_draw_y))
+
 
     # 角色动画加载
     PLAYER_SIZE = 180
@@ -109,7 +135,7 @@ def main():
 
     # --- 3. 游戏状态变量 ---
     scene = 'MENU'
-    WORLD_WIDTH, WORLD_HEIGHT = 6000, 3000
+    WORLD_WIDTH, WORLD_HEIGHT = move_x, move_y
     player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
     player_speed = 12
     frame_counter = 0 
@@ -213,7 +239,7 @@ def main():
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img, (x + offset_x, y + offset_y))
-
+            move_item(fence,0,-100) #上围栏
             # 敌人生成
             if frame_counter % SPAWN_RATE == 0:
                 spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
@@ -248,7 +274,7 @@ def main():
             # 玩家绘制
             p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
             canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
-
+            move_item(fence,0,2160) #下围栏
             if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
