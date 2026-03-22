@@ -100,10 +100,16 @@ def main():
             raw_tile = pygame.image.load("codemao/background2.png").convert()
             tile_img2 = pygame.transform.scale(raw_tile, (TILE_W, TILE_H))
         except: pass
+    
+    if os.path.exists("codemao/background3.png"):
+        try:
+            raw_tile3 = pygame.image.load("codemao/background3.png").convert()
+            tile_img3 = pygame.transform.scale(raw_tile3, (TILE_W, TILE_H))
+        except: pass
 
     # --- 3. 游戏状态变量 ---
     scene = 'MENU'
-    WORLD_WIDTH, WORLD_HEIGHT = 7500, 4000
+    WORLD_WIDTH, WORLD_HEIGHT = 6000, 3000
     player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
     player_speed = 12
     frame_counter = 0 
@@ -169,8 +175,6 @@ def main():
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img2, (x + offset_x, y + offset_y))
-            #msg = title_font.render(title, True, (255, 255, 255))
-            #canvas.blit(msg, msg.get_rect(center=(LOGIC_W//2, LOGIC_H//3)))
             title_x = LOGIC_W // 2 - title_img.get_width() // 2
             title_y = 200  # 距离顶部 200 像素
             canvas.blit(title_img, (title_x, title_y))
@@ -251,6 +255,9 @@ def main():
                 pygame.time.delay(200)
 
         elif scene == 'RESULT':
+            for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
+                for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
+                    canvas.blit(tile_img3, (x + offset_x, y + offset_y))
             res_msg = title_font.render("Game Over", True, (255, 0, 0))
             canvas.blit(res_msg, res_msg.get_rect(center=(LOGIC_W//2, LOGIC_H//3)))
             if draw_btn("返回菜单", LOGIC_W//2-150, LOGIC_H//2, 300, 80, (50, 150, 255)):
