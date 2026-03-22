@@ -2,13 +2,13 @@ import pygame
 import sys
 import os
 import random
+import traceback
 
 # === 1. 配置与初始化函数 ===
 def main():
     pygame.init()
     # 初始化混音器（必须在音乐播放前）
     pygame.mixer.init()
-
     LOGIC_W, LOGIC_H = 3200, 1800
     win_w, win_h = 1600, 900
 
@@ -16,6 +16,9 @@ def main():
     canvas = pygame.Surface((LOGIC_W, LOGIC_H))
     title="变异狂潮-十周年纪念版"
     pygame.display.set_caption(title)
+    icon_img = pygame.image.load("codemao/r-logo.png").convert_alpha() 
+    pygame.display.set_icon(icon_img)
+
 
     def get_font(size):
         return pygame.font.SysFont(["wqy-microhei", "notosanscjksc", "simhei", "sans-serif"], size)
