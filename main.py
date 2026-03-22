@@ -87,7 +87,7 @@ def main():
 
 
     # 角色动画加载
-    PLAYER_SIZE = 180
+    PLAYER_SIZE = 200
     ANIM_SPEED = 35 
     player_frames = []
     p_files = ["codemao/player1.png", "codemao/player2.png"] 
@@ -95,9 +95,9 @@ def main():
     for f in p_files:
         if os.path.exists(f):
             img = pygame.image.load(f).convert_alpha()
-            player_frames.append(pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE)))
+            player_frames.append(pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE*(7/8))))
         else:
-            s = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE))
+            s = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE*(7/8)))
             s.fill((255, 0, 0) if "1" in f else (255, 100, 0))
             player_frames.append(s)
 
