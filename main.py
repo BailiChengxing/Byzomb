@@ -51,9 +51,23 @@ def main():
 
     #加载围栏
     fence=pygame.image.load("codemao/Fence.png").convert_alpha()
-    size=move_x
-    fence= pygame.transform.scale(fence, (size, (61/1128)*size))
-
+    fence= pygame.transform.scale(fence, (move_x, (61/1128)*move_x))
+    #加载树林
+    tree1=pygame.image.load("codemao/tree1.png").convert_alpha()
+    tree1= pygame.transform.scale(tree1, ((move_y+800)*(211/707), move_y+800))
+    tree2=pygame.image.load("codemao/tree2.png").convert_alpha()
+    tree2= pygame.transform.scale(tree2, ((move_y+2300)*(357/705), move_y+2300))
+    #图片加载
+    def load(file,size):
+        if os.path.exists(file):
+            try:
+                img = pygame.image.load(file).convert_alpha()
+                width = img.get_width()   # 获取宽度
+                height = img.get_height() # 获取高度
+                ratio = height / width  # 计算宽高比
+                return pygame.transform.scale(img, (size, int(size * ratio)))
+            except:
+                print(f"Error loading image: {file}")
     '''def move_item(file,size,x,y):#定义动类型物品
         img = pygame.image.load(file).convert_alpha()
         width = img.get_width()   # 获取宽度
@@ -137,7 +151,7 @@ def main():
     scene = 'MENU'
     WORLD_WIDTH, WORLD_HEIGHT = move_x, move_y
     player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
-    player_speed = 12
+    player_speed = 30
     frame_counter = 0 
 
     # 缩放相关变量
@@ -275,6 +289,8 @@ def main():
             p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
             canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
             move_item(fence,0,2160) #下围栏
+            move_item(tree1,-800,-500) #左树
+            move_item(tree2,5400,-1200) #右树
             if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
