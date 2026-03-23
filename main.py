@@ -40,6 +40,31 @@ def main():
             except:
                 print(f"Error loading image: {file}")
 
+    def load_ls(file,x=None,y=None):#加载图片并根据参数调整大小
+        '''
+        :param file:图片路径
+        :param x:物品长度
+        :param y:物品宽度
+        '''
+        ls=[]
+        for i in file:
+            if os.path.exists(i):
+                try:
+                    img = pygame.image.load(i).convert_alpha()
+                    width = img.get_width()   # 获取宽度
+                    height = img.get_height() # 获取高度
+                    ratio = height / width  # 计算宽高比
+                    if x is None:
+                        img = pygame.transform.scale(img, (int(y/ratio), y ))
+                    elif y is None:
+                        img = pygame.transform.scale(img, (x, int(x*ratio)))
+                    elif x is not None and y is not None:
+                        img = pygame.transform.scale(img, (x, y))
+                    ls.append(img)
+                    return ls
+                except:
+                    print(f"Error loading image: {i}")
+
 
     def get_font(size):
         return pygame.font.SysFont(["wqy-microhei", "notosanscjksc", "simhei", "sans-serif"], size)
@@ -77,6 +102,9 @@ def main():
     tree1=load(file="codemao/tree1.png",y=int(move_y+800)) #左树
     tree2=load(file="codemao/tree2.png",y=int(move_y+3700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
+    health1=load(file="codemao/health1.png",y=28) #血条
+    health2=load(file="codemao/health2.png",y=29) #血条2
+    open_bar=load_ls(file=["codemao/open1.png","codemao/open2.png","codemao/open3.png"],y=50) #开箱子进度条
     
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -85,7 +113,6 @@ def main():
     def static_item(img,x,y):#定义动类型物品绘制
         canvas.blit(img, (x,y))
     
-
     # 角色动画加载
     PLAYER_SIZE = 200
     ANIM_SPEED = 35 
@@ -282,6 +309,9 @@ def main():
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
             move_item(wall,-1500,-725) #墙
+            static_item(open_bar[0], 30, 30) #开箱进度条
+            static_item(health2, LOGIC_W//2-125, LOGIC_H//2-140) #血条
+            static_item(health1, LOGIC_W//2-122, LOGIC_H//2-140) #血条2
             if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
