@@ -18,6 +18,27 @@ def main():
     pygame.display.set_caption(title)
     icon_img = pygame.image.load("codemao/r-logo.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
+    def load(file,x=None,y=None):#加载图片并根据参数调整大小
+        '''
+        :param file:图片路径
+        :param x:物品长度
+        :param y:物品宽度
+        '''
+        if os.path.exists(file):
+            try:
+                img = pygame.image.load(file).convert_alpha()
+                width = img.get_width()   # 获取宽度
+                height = img.get_height() # 获取高度
+                ratio = height / width  # 计算宽高比
+                if x is None:
+                    img = pygame.transform.scale(img, (int(y/ratio), y ))
+                elif y is None:
+                    img = pygame.transform.scale(img, (x, int(x*ratio)))
+                elif x is not None and y is not None:
+                    img = pygame.transform.scale(img, (x, y))
+                return img
+            except:
+                print(f"Error loading image: {file}")
 
 
     def get_font(size):
@@ -53,38 +74,17 @@ def main():
     fence=pygame.image.load("codemao/Fence.png").convert_alpha()
     fence= pygame.transform.scale(fence, (move_x, (61/1128)*move_x))
     #加载树林
-    tree1=pygame.image.load("codemao/tree1.png").convert_alpha()
-    tree1= pygame.transform.scale(tree1, ((move_y+800)*(211/707), move_y+800))
-    tree2=pygame.image.load("codemao/tree2.png").convert_alpha()
-    tree2= pygame.transform.scale(tree2, ((move_y+2300)*(357/705), move_y+2300))
-    #图片加载
-    def load(file,size):
-        if os.path.exists(file):
-            try:
-                img = pygame.image.load(file).convert_alpha()
-                width = img.get_width()   # 获取宽度
-                height = img.get_height() # 获取高度
-                ratio = height / width  # 计算宽高比
-                return pygame.transform.scale(img, (size, int(size * ratio)))
-            except:
-                print(f"Error loading image: {file}")
-    '''def move_item(file,size,x,y):#定义动类型物品
-        img = pygame.image.load(file).convert_alpha()
-        width = img.get_width()   # 获取宽度
-        height = img.get_height() # 获取高度
-        ratio = height / width  # 计算宽高比
-        img = pygame.transform.scale(img, (size, int(size / ratio)))
-        item_draw_x = x + cam_x
-        item_draw_y = y + cam_y
-        #只有当物品在屏幕范围内时才绘制（性能优化）
-        if -100 < item_draw_x < LOGIC_W + 100 and -100 < item_draw_y < LOGIC_H + 100:
-            canvas.blit(img, (item_draw_x, item_draw_y))
-    '''
+    tree1=load(file="codemao/tree1.png",y=int(move_y+800)) #左树
+    tree2=load(file="codemao/tree2.png",y=int(move_y+3700)) #右树
+    wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
+    
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
         item_draw_y = y + cam_y
         canvas.blit(img, (item_draw_x, item_draw_y))
-
+    def static_item(img,x,y):#定义动类型物品绘制
+        canvas.blit(img, (x,y))
+    
 
     # 角色动画加载
     PLAYER_SIZE = 200
@@ -97,7 +97,7 @@ def main():
             img = pygame.image.load(f).convert_alpha()
             player_frames.append(pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE*(7/8))))
         else:
-            s = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE*(7/8)))
+            s = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE))
             s.fill((255, 0, 0) if "1" in f else (255, 100, 0))
             player_frames.append(s)
 
@@ -122,16 +122,6 @@ def main():
     # 背景加载
     TILE_W = 2800
     TILE_H = int(TILE_W * (9 / 16)) 
-
-    tile_img = pygame.Surface((TILE_W, TILE_H))
-    tile_img.fill((34, 139, 34)) 
-
-    if os.path.exists("codemao/background.png"):
-        try:
-            raw_tile = pygame.image.load("codemao/background.png").convert()
-            tile_img = pygame.transform.scale(raw_tile, (TILE_W, TILE_H))
-        except: pass
-
     tile_img2 = pygame.Surface((TILE_W, TILE_H))
     tile_img2.fill((34, 139, 34)) 
 
@@ -252,7 +242,7 @@ def main():
             
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
-                    canvas.blit(tile_img, (x + offset_x, y + offset_y))
+                    canvas.blit(tile_img2, (x + offset_x, y + offset_y))
             move_item(fence,0,-100) #上围栏
             # 敌人生成
             if frame_counter % SPAWN_RATE == 0:
@@ -288,9 +278,10 @@ def main():
             # 玩家绘制
             p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
             canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
-            move_item(fence,0,2160) #下围栏
-            move_item(tree1,-800,-500) #左树
-            move_item(tree2,5400,-1200) #右树
+            move_item(fence,0,2145) #下围栏
+            move_item(tree1,-830,-630) #左树
+            move_item(tree2,5400,-1900)#右树
+            move_item(wall,-1500,-725) #墙
             if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
