@@ -114,6 +114,8 @@ def main():
     health1=load(file="codemao/health1.png",y=28) #血条
     health2=load(file="codemao/health2.png",y=29) #血条2
     open_bar=load_ls(file=["codemao/open1.png","codemao/open2.png","codemao/open3.png"],y=50) #开箱子进度条
+    weapon1=load_ls(file=["codemao/weapon/mondragon.png"],x=320) #武器1
+    weapon2=weapon1
     
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -124,7 +126,7 @@ def main():
     
     # 角色动画加载
     PLAYER_SIZE = 200
-    ANIM_SPEED = 35 
+    ANIM_SPEED = 20 
     player_frames = []
     p_files = ["codemao/player1.png", "codemao/player2.png"] 
 
@@ -138,10 +140,10 @@ def main():
             player_frames.append(s)
 
     # 敌人动画加载
-    ENEMY_SIZE = 150
-    ENEMY_ANIM_SPEED = 20 
+    ENEMY_SIZE = 240
+    ENEMY_ANIM_SPEED = 30 
     enemy_frames = []
-    e_files = ["codemao/enemy1.png", "codemao/enemy2.png"]
+    e_files = ["codemao/zombie/zombie1.png", "codemao/zombie/zombie2.png"]
 
     for i, f in enumerate(e_files):
         if os.path.exists(f):
@@ -177,7 +179,7 @@ def main():
     scene = 'MENU'
     WORLD_WIDTH, WORLD_HEIGHT = move_x, move_y
     player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
-    player_speed = 30
+    player_speed = 50
     frame_counter = 0 
 
     # 缩放相关变量
@@ -315,10 +317,10 @@ def main():
                 enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
                 
                 # 【碰撞逻辑】
-                if player_rect.colliderect(enemy_rect):
+                '''if player_rect.colliderect(enemy_rect):
                     scene = 'RESULT'
                     pygame.mixer.music.stop() # 撞到了强制停音乐
-                    pygame.time.delay(200)
+                    pygame.time.delay(200)'''
 
                 if -ENEMY_SIZE < draw_x < LOGIC_W and -ENEMY_SIZE < draw_y < LOGIC_H:
                     alive_ticks = frame_counter - e["born"]
@@ -331,7 +333,12 @@ def main():
             # 玩家绘制
             p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
             canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
-            move_item(fence,0,2145) #下围栏
+            if True: #武器1
+                if p_idx==0:
+                    static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+55))
+                elif p_idx==1:
+                    static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+45))
+                move_item(fence,0,2145) #下围栏
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
             move_item(wall,-1500,-725) #墙
