@@ -18,6 +18,8 @@ def main():
     pygame.display.set_caption(title)
     icon_img = pygame.image.load("codemao/r-logo.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
+    show1 = False
+    alpha = 0
     def load(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
         :param file:图片路径
@@ -39,6 +41,10 @@ def main():
                 return img
             except:
                 print(f"Error loading image: {file}")
+    def center(img,x,y):#定义图片居中绘制
+        rect = img.get_rect()
+        rect.center = (x, y)
+        return rect
 
     def load_ls(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
@@ -87,13 +93,14 @@ def main():
     # 按钮尺寸（根据你的图片实际大小调整）
     BTN_W, BTN_H = 912.5, 322.5
 
-    # 加载常态图
-    btn_normal = pygame.image.load("codemao/UI/buttun1.png").convert_alpha()
-    btn_normal = pygame.transform.scale(btn_normal, (BTN_W, BTN_H))
+    # 加载开始按钮
+    btn_normal = load(file="codemao/UI/buttun1.png",x=BTN_W,y=BTN_H)
+    btn_hover = load(file="codemao/UI/buttun2.png",x=BTN_W,y=BTN_H)
 
-    # 加载悬停图（比如带光效的图）
-    btn_hover = pygame.image.load("codemao/UI/buttun2.png").convert_alpha()
-    btn_hover = pygame.transform.scale(btn_hover, (BTN_W, BTN_H))
+    #加载帮助按钮
+    btn_help_normal = load(file="codemao/UI/help1.png",x=BTN_W,y=BTN_H)
+    btn_help_hover = load(file="codemao/UI/help2.png",x=BTN_W,y=BTN_H)
+    help_paper = load(file="codemao/UI/help_paper.png",x=800)
 
     #加载围栏
     fence=pygame.image.load("codemao/Fence.png").convert_alpha()
@@ -193,8 +200,8 @@ def main():
         txt = ui_font.render(text, True, (255, 255, 255))
         canvas.blit(txt, txt.get_rect(center=(x + w/2, y + h/2)))
         return is_hover and pygame.mouse.get_pressed()[0]
-    def start_btn(img_normal, img_hover, x, y):
-    # 1. 获取逻辑鼠标位置
+    def btn(img_normal, img_hover, x, y):
+        # 1. 获取逻辑鼠标位置
         l_mx, l_my = get_logic_mouse()
         # 2. 获取图片矩形区域用于碰撞检测
         rect = img_normal.get_rect(topleft=(x, y))
@@ -237,7 +244,7 @@ def main():
             canvas.blit(title_img, (title_x, title_y))
             btn_x = LOGIC_W // 2 - BTN_W // 2
             btn_y = LOGIC_H // 2
-            if start_btn(btn_normal, btn_hover, btn_x, btn_y):
+            if btn(btn_normal, btn_hover, btn_x, btn_y-100):
                 scene = 'GAME'
                 enemies = [] # 重置敌人
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
@@ -247,6 +254,20 @@ def main():
                     pygame.mixer.music.set_volume(0.6) # 设置音量
                     pygame.mixer.music.play(-1) # 循环播放音乐
                 pygame.time.delay(200)
+            
+            if btn(btn_help_normal, btn_help_hover, btn_x, btn_y+320):
+                help_paper.set_alpha(alpha)
+                alpha = 0  # 从完全透明开始
+                show1 = True
+            if show1:
+                if alpha < 255:
+                    alpha += 8
+                elif alpha > 255:
+                    alpha = 255  # 每帧增加透明度
+                rect = img.get_rect()
+                rect.center = (1600, 900)
+                help_paper.set_alpha(alpha)
+                canvas.blit(help_paper, center(help_paper,1600,900))
 
 
         elif scene == 'GAME':
