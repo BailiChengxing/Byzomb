@@ -103,6 +103,7 @@ def main():
     btn_close_normal = load(file="codemao/UI/close1.png",x=100)
     btn_close_hover = load(file="codemao/UI/close2.png",x=100)
     help_paper = load(file="codemao/UI/help_page2.png",x=3000)
+    rec=load(file="codemao/UI/rec.png",x=190) #换弹药
 
     #加载围栏
     fence=pygame.image.load("codemao/Fence.png").convert_alpha()
@@ -345,6 +346,8 @@ def main():
             static_item(open_bar[0], 30, 30) #开箱进度条
             static_item(health2, LOGIC_W//2-125, LOGIC_H//2-140) #血条
             static_item(health1, LOGIC_W//2-122, LOGIC_H//2-140) #血条2
+            static_item(rec, 70, 1550) #换弹药
+
             if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
