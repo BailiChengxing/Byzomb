@@ -100,7 +100,9 @@ def main():
     #加载帮助按钮
     btn_help_normal = load(file="codemao/UI/help1.png",x=BTN_W,y=BTN_H)
     btn_help_hover = load(file="codemao/UI/help2.png",x=BTN_W,y=BTN_H)
-    help_paper = load(file="codemao/UI/help_paper.png",x=800)
+    btn_close_normal = load(file="codemao/UI/close1.png",x=100)
+    btn_close_hover = load(file="codemao/UI/close2.png",x=100)
+    help_paper = load(file="codemao/UI/help_page2.png",x=3000)
 
     #加载围栏
     fence=pygame.image.load("codemao/Fence.png").convert_alpha()
@@ -259,15 +261,18 @@ def main():
                 help_paper.set_alpha(alpha)
                 alpha = 0  # 从完全透明开始
                 show1 = True
+            
             if show1:
-                if alpha < 255:
-                    alpha += 8
+                '''if alpha < 255:
+                    alpha += 20
                 elif alpha > 255:
-                    alpha = 255  # 每帧增加透明度
+                    alpha = 255  # 每帧增加透明度'''
                 rect = img.get_rect()
                 rect.center = (1600, 900)
-                help_paper.set_alpha(alpha)
+                help_paper.set_alpha(255)
                 canvas.blit(help_paper, center(help_paper,1600,900))
+                if btn(btn_close_normal, btn_close_hover, 2987, 70):
+                    show1 = False
 
 
         elif scene == 'GAME':
