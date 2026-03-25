@@ -22,6 +22,7 @@ def main():
     alpha = 0
     developer_mode = True  # 开发者模式开关
 
+
     def load(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
         :param file:图片路径
@@ -135,6 +136,7 @@ def main():
     open_bar=load_ls(file=["codemao/open1.png","codemao/open2.png","codemao/open3.png"],y=50) #开箱子进度条
     weapon1=load_ls(file=["codemao/weapon/mondragon.png"],x=320) #武器1
     weapon2=weapon1
+    grave=load(file="codemao/grave.png",y=220) #墓碑
     
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -245,7 +247,7 @@ def main():
             if event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
             if event.type == pygame.KEYDOWN:
-                if scene == 'GAME':
+                if scene == 'GAME'and player_hp > 0 and wall_hp > 0:
                     if event.key == pygame.K_r: #换弹
                         add_hp+=5
 
@@ -281,6 +283,12 @@ def main():
                 delay_hp=100 #掉血动画用的延迟血量
                 wall_delay_hp=100 #墙掉血动画用的延迟血量
                 add_hp=0
+                reload_data = {#弹药系统预留
+                    "is_reloading": False,
+                    "start_time": 0,
+                    "duration": 0,    # 动态传入的时间
+                    "icon": None      # 动态传入的图标
+                }
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
                 if os.path.exists(bgm_path):
                     pygame.mixer.music.stop()
@@ -304,109 +312,120 @@ def main():
 
 
         elif scene == 'GAME':
-            # 移动逻辑
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_a]: player_world_x -= player_speed
-            if keys[pygame.K_d]: player_world_x += player_speed
-            if keys[pygame.K_w]: player_world_y -= player_speed
-            if keys[pygame.K_s]: player_world_y += player_speed
+            if player_hp > 0 and wall_hp > 0:
+                # 移动逻辑
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_a]: player_world_x -= player_speed
+                if keys[pygame.K_d]: player_world_x += player_speed
+                if keys[pygame.K_w]: player_world_y -= player_speed
+                if keys[pygame.K_s]: player_world_y += player_speed
 
 
-            player_world_x = max(0, min(player_world_x, WORLD_WIDTH - PLAYER_SIZE))
-            player_world_y = max(0, min(player_world_y, WORLD_HEIGHT - PLAYER_SIZE))
+                player_world_x = max(0, min(player_world_x, WORLD_WIDTH - PLAYER_SIZE))
+                player_world_y = max(0, min(player_world_y, WORLD_HEIGHT - PLAYER_SIZE))
 
-            cam_x = (LOGIC_W//2 - (player_world_x + PLAYER_SIZE//2))
-            cam_y = (LOGIC_H//2 - (player_world_y + PLAYER_SIZE//2))
+                cam_x = (LOGIC_W//2 - (player_world_x + PLAYER_SIZE//2))
+                cam_y = (LOGIC_H//2 - (player_world_y + PLAYER_SIZE//2))
 
-            offset_x = cam_x % TILE_W
-            offset_y = cam_y % TILE_H
-            
-            for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
-                for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
-                    canvas.blit(tile_img2, (x + offset_x, y + offset_y))
-            move_item(fence,0,-100) #上围栏
-            # 敌人生成
-            if frame_counter % SPAWN_RATE == 0:
-                spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
-                enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter})
-
-            # --- 碰撞检测准备 ---
-            # 玩家在逻辑世界中的矩形 (x, y, w, h)
-            player_rect = pygame.Rect(player_world_x, player_world_y, PLAYER_SIZE, PLAYER_SIZE)
-
-            # --- 敌人更新与绘制 ---
-            for e in enemies[:]:
-                e["x"] -= ENEMY_SPEED 
-                draw_x, draw_y = e["x"] + cam_x, e["y"] + cam_y
+                offset_x = cam_x % TILE_W
+                offset_y = cam_y % TILE_H
                 
-                # 创建敌人的矩形进行碰撞判定
-                enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
-                
-                # 【碰撞逻辑】
-                if player_rect.colliderect(enemy_rect):
-                    if current_time - last_hit_time > hit_cooldown:
-                        player_hp -= 5
-                        last_hit_time = current_time # 【关键】更新被撞时间戳
+                for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
+                    for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
+                        canvas.blit(tile_img2, (x + offset_x, y + offset_y))
+                move_item(fence,0,-100) #上围栏
+                # 敌人生成
+                if frame_counter % SPAWN_RATE == 0:
+                    spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
+                    enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter, "alpha": 255})
 
-                if -ENEMY_SIZE < draw_x < LOGIC_W and -ENEMY_SIZE < draw_y < LOGIC_H:
-                    alive_ticks = frame_counter - e["born"]
-                    e_idx = (alive_ticks // ENEMY_ANIM_SPEED) % len(enemy_frames)
-                    canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
-                
-                if e["x"] <= -ENEMY_SIZE:
-                    wall_hp -= 5
-                    enemies.remove(e)
-            if delay_hp > player_hp:
-                delay_hp -= 0.2
-            elif delay_hp < player_hp:
-                delay_hp = player_hp
-            if wall_delay_hp > wall_hp:
-                wall_delay_hp -= 0.2
-            elif wall_delay_hp < wall_hp:
-                wall_delay_hp = wall_hp
-            if player_hp <= 0 or wall_hp <= 0:
+                # --- 碰撞检测准备 ---
+                # 玩家在逻辑世界中的矩形 (x, y, w, h)
+                player_rect = pygame.Rect(player_world_x, player_world_y, PLAYER_SIZE, PLAYER_SIZE)
+
+                # --- 敌人更新与绘制 ---
+                for e in enemies[:]:
+                    e["x"] -= ENEMY_SPEED 
+                    draw_x, draw_y = e["x"] + cam_x, e["y"] + cam_y
+                    
+                    # 创建敌人的矩形进行碰撞判定
+                    enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
+                    
+                    # 【碰撞逻辑】
+                    if player_rect.colliderect(enemy_rect):
+                        if current_time - last_hit_time > hit_cooldown:
+                            player_hp -= 5
+                            last_hit_time = current_time #更新被撞时间戳
+
+                    if -ENEMY_SIZE < draw_x < LOGIC_W and -ENEMY_SIZE < draw_y < LOGIC_H:
+                        alive_ticks = frame_counter - e["born"]
+                        e_idx = (alive_ticks // ENEMY_ANIM_SPEED) % len(enemy_frames)
+                        enemy_frames[e_idx].set_alpha(e["alpha"])
+                        canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
+                    
+                    if e["x"] <= -ENEMY_SIZE-50:
+                        e["alpha"] -= 5
+                        if e["alpha"] <= 0:
+                            wall_hp -= 5
+                            enemies.remove(e)
+
+                if delay_hp > player_hp:
+                    delay_hp -= 0.2
+                elif delay_hp < player_hp:
+                    delay_hp = player_hp
+                if wall_delay_hp > wall_hp:
+                    wall_delay_hp -= 0.2
+                elif wall_delay_hp < wall_hp:
+                    wall_delay_hp = wall_hp
+
+                if player_hp > 100:
+                    player_hp = 100
+                if add_hp > 0:
+                    player_hp += 0.2
+                    add_hp -= 0.2
+
+                # 玩家绘制
+                if keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_w] or keys[pygame.K_s]:
+                    p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
+                    canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
+                else:
+                    canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
+                if True: #武器1
+                    if p_idx==0:
+                        static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+55))
+                    elif p_idx==1:
+                        static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+45))
+                move_item(fence,0,2145) #下围栏
+                move_item(tree1,-830,-630) #左树
+                move_item(tree2,5400,-1900)#右树
+                move_item(wall,-1500,-725) #墙
+                move_item(wall_life,-1480,1050) #墙血量
+                #static_item(open_bar[0], 30, 30) #开箱进度条
+                static_item(rec, 70, 1550) #换弹药
+                draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
+                draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
+                if developer_mode:
+                    fps = int(clock.get_fps())
+                    fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
+                    current_time = pygame.time.get_ticks()
+                    current_time_text = ui_font.render(f"Time: {current_time//1000}s", True, (255, 255, 0))
+                    canvas.blit(fps_text, (120, 10))
+                    canvas.blit(current_time_text, (120, 50))
+                    health_text = ui_font.render(f"HP: {player_hp}", True, (255, 255, 0))
+                    canvas.blit(health_text, (120, 90))
+                    if draw_btn("buttun", 120, 160, 150, 60 ,(60, 60, 60)):
+                        player_hp -= 3
+                    
+                if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
+                    scene = 'RESULT'
+                    pygame.mixer.music.stop()
+                    pygame.time.delay(200)
+            elif player_hp <= 0:
+                static_item(grave, LOGIC_W//2 - PLAYER_SIZE//2,(LOGIC_H//2 - PLAYER_SIZE//2)-200) #玩家死亡后绘制墓碑
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
                 pygame.time.delay(200)
-            elif player_hp > 100:
-                player_hp = 100
-            if add_hp > 0:
-                player_hp += 0.2
-                add_hp -= 0.2
-
-            # 玩家绘制
-            if keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_w] or keys[pygame.K_s]:
-                p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
-                canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
-            else:
-                canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
-            if True: #武器1
-                if p_idx==0:
-                    static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+55))
-                elif p_idx==1:
-                    static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+45))
-            move_item(fence,0,2145) #下围栏
-            move_item(tree1,-830,-630) #左树
-            move_item(tree2,5400,-1900)#右树
-            move_item(wall,-1500,-725) #墙
-            move_item(wall_life,-1480,1050) #墙血量
-            #static_item(open_bar[0], 30, 30) #开箱进度条
-            static_item(rec, 70, 1550) #换弹药
-            draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
-            draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
-            if developer_mode:
-                fps = int(clock.get_fps())
-                fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
-                current_time = pygame.time.get_ticks()
-                current_time_text = ui_font.render(f"Time: {current_time//1000}s", True, (255, 255, 0))
-                canvas.blit(fps_text, (120, 10))
-                canvas.blit(current_time_text, (120, 50))
-                health_text = ui_font.render(f"HP: {player_hp}", True, (255, 255, 0))
-                canvas.blit(health_text, (120, 90))
-                if draw_btn("buttun", 120, 160, 150, 60 ,(60, 60, 60)):
-                    player_hp += 3
-                
-            if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
+            elif wall_hp <= 0:
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
                 pygame.time.delay(200)
