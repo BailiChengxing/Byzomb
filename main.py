@@ -2,7 +2,7 @@ import pygame
 import sys
 import os
 import random
-import traceback
+import math
 
 # === 1. 配置与初始化函数 ===
 def main():
@@ -21,6 +21,7 @@ def main():
     show1 = False
     alpha = 0
     developer_mode = True  # 开发者模式开关
+
     def load(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
         :param file:图片路径
@@ -46,11 +47,13 @@ def main():
         rect = img.get_rect()
         rect.center = (x, y)
         return rect
-    def draw_health_bar(surface, x, y, current_hp, max_hp):
+    def draw_health_bar(surface, x, y, current_hp, max_hp,delay):
         bar_width = 230    # 血条总长度（像素）
         bar_height = 28    # 血条高度
         ratio = max(0, min(current_hp / max_hp, 1))
+        ratio2 = max(0, min(delay / max_hp, 1))
         pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
+        pygame.draw.rect(surface, (255, 255, 255), (x, y, int(bar_width * ratio2), bar_height))
         color = (42, 174, 42) if ratio > 0.5 else (218, 165, 32) if ratio > 0.2 else (178, 34, 34)
         pygame.draw.rect(surface, color, (x, y, int(bar_width * ratio), bar_height))
         pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
@@ -128,6 +131,7 @@ def main():
     tree1=load(file="codemao/tree1.png",y=int(move_y+800)) #左树
     tree2=load(file="codemao/tree2.png",y=int(move_y+3700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
+    wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
     open_bar=load_ls(file=["codemao/open1.png","codemao/open2.png","codemao/open3.png"],y=50) #开箱子进度条
     weapon1=load_ls(file=["codemao/weapon/mondragon.png"],x=320) #武器1
     weapon2=weapon1
@@ -240,6 +244,10 @@ def main():
                 pygame.quit(); sys.exit()
             if event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+            if event.type == pygame.KEYDOWN:
+                if scene == 'GAME':
+                    if event.key == pygame.K_r: #换弹
+                        add_hp+=5
 
         canvas.fill((0, 0, 0))
 
@@ -267,7 +275,12 @@ def main():
                 scene = 'GAME'
                 enemies = [] # 重置敌人
                 player_hp = 100 # 重置血量
+                wall_hp = 100 # 重置墙血量
                 last_hit_time = 0 # 重置被撞时间戳
+                p_idx=0
+                delay_hp=100 #掉血动画用的延迟血量
+                wall_delay_hp=100 #墙掉血动画用的延迟血量
+                add_hp=0
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
                 if os.path.exists(bgm_path):
                     pygame.mixer.music.stop()
@@ -282,10 +295,6 @@ def main():
                 show1 = True
             
             if show1:
-                '''if alpha < 255:
-                    alpha += 20
-                elif alpha > 255:
-                    alpha = 255  # 每帧增加透明度'''
                 rect = img.get_rect()
                 rect.center = (1600, 900)
                 help_paper.set_alpha(255)
@@ -345,27 +354,46 @@ def main():
                     canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
                 
                 if e["x"] <= -ENEMY_SIZE:
+                    wall_hp -= 5
                     enemies.remove(e)
-            if player_hp <= 0:
+            if delay_hp > player_hp:
+                delay_hp -= 0.2
+            elif delay_hp < player_hp:
+                delay_hp = player_hp
+            if wall_delay_hp > wall_hp:
+                wall_delay_hp -= 0.2
+            elif wall_delay_hp < wall_hp:
+                wall_delay_hp = wall_hp
+            if player_hp <= 0 or wall_hp <= 0:
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
                 pygame.time.delay(200)
+            elif player_hp > 100:
+                player_hp = 100
+            if add_hp > 0:
+                player_hp += 0.2
+                add_hp -= 0.2
 
             # 玩家绘制
-            p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
-            canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
+            if keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_w] or keys[pygame.K_s]:
+                p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
+                canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
+            else:
+                canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
             if True: #武器1
                 if p_idx==0:
                     static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+55))
                 elif p_idx==1:
                     static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+45))
-                move_item(fence,0,2145) #下围栏
+            move_item(fence,0,2145) #下围栏
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
             move_item(wall,-1500,-725) #墙
+            move_item(wall_life,-1480,1050) #墙血量
             #static_item(open_bar[0], 30, 30) #开箱进度条
             static_item(rec, 70, 1550) #换弹药
-            draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100)
+            draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
+            draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
             if developer_mode:
                 fps = int(clock.get_fps())
                 fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
@@ -375,8 +403,9 @@ def main():
                 canvas.blit(current_time_text, (120, 50))
                 health_text = ui_font.render(f"HP: {player_hp}", True, (255, 255, 0))
                 canvas.blit(health_text, (120, 90))
+                if draw_btn("buttun", 120, 160, 150, 60 ,(60, 60, 60)):
+                    player_hp += 3
                 
-
             if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                 scene = 'RESULT'
                 pygame.mixer.music.stop()
