@@ -20,6 +20,7 @@ def main():
     pygame.display.set_icon(icon_img)
     show1 = False
     alpha = 0
+    developer_mode = True  # 开发者模式开关
     def load(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
         :param file:图片路径
@@ -45,6 +46,18 @@ def main():
         rect = img.get_rect()
         rect.center = (x, y)
         return rect
+    def draw_health_bar(surface, x, y, current_hp, max_hp):
+        bar_width = 230    # 血条总长度（像素）
+        bar_height = 28    # 血条高度
+        ratio = max(0, min(current_hp / max_hp, 1))
+        pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
+        color = (42, 174, 42) if ratio > 0.5 else (218, 165, 32) if ratio > 0.2 else (178, 34, 34)
+        pygame.draw.rect(surface, color, (x, y, int(bar_width * ratio), bar_height))
+        pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+        # 创建一个带 Alpha 的临时 Surface 来画半透明高光
+        highlight_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
+        highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
+        surface.blit(highlight_surf, (x, y))
 
     def load_ls(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
@@ -80,6 +93,9 @@ def main():
     clock = pygame.time.Clock()
 
     # --- 2. 资源加载与处理 ---
+
+    hit_cooldown = 300 # 被撞后无敌时间（毫秒）
+
     # 背景音乐加载
     bgm_path = "codemao/music/bgm.mp3"
     bgm_path2 = "codemao/music/bgm2.mp3"
@@ -112,8 +128,6 @@ def main():
     tree1=load(file="codemao/tree1.png",y=int(move_y+800)) #左树
     tree2=load(file="codemao/tree2.png",y=int(move_y+3700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
-    health1=load(file="codemao/health1.png",y=28) #血条
-    health2=load(file="codemao/health2.png",y=29) #血条2
     open_bar=load_ls(file=["codemao/open1.png","codemao/open2.png","codemao/open3.png"],y=50) #开箱子进度条
     weapon1=load_ls(file=["codemao/weapon/mondragon.png"],x=320) #武器1
     weapon2=weapon1
@@ -141,7 +155,7 @@ def main():
             player_frames.append(s)
 
     # 敌人动画加载
-    ENEMY_SIZE = 240
+    ENEMY_SIZE = 215
     ENEMY_ANIM_SPEED = 30 
     enemy_frames = []
     e_files = ["codemao/zombie/zombie1.png", "codemao/zombie/zombie2.png"]
@@ -252,6 +266,8 @@ def main():
             if btn(btn_normal, btn_hover, btn_x, btn_y-100):
                 scene = 'GAME'
                 enemies = [] # 重置敌人
+                player_hp = 100 # 重置血量
+                last_hit_time = 0 # 重置被撞时间戳
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
                 if os.path.exists(bgm_path):
                     pygame.mixer.music.stop()
@@ -318,10 +334,10 @@ def main():
                 enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
                 
                 # 【碰撞逻辑】
-                '''if player_rect.colliderect(enemy_rect):
-                    scene = 'RESULT'
-                    pygame.mixer.music.stop() # 撞到了强制停音乐
-                    pygame.time.delay(200)'''
+                if player_rect.colliderect(enemy_rect):
+                    if current_time - last_hit_time > hit_cooldown:
+                        player_hp -= 5
+                        last_hit_time = current_time # 【关键】更新被撞时间戳
 
                 if -ENEMY_SIZE < draw_x < LOGIC_W and -ENEMY_SIZE < draw_y < LOGIC_H:
                     alive_ticks = frame_counter - e["born"]
@@ -330,6 +346,10 @@ def main():
                 
                 if e["x"] <= -ENEMY_SIZE:
                     enemies.remove(e)
+            if player_hp <= 0:
+                scene = 'RESULT'
+                pygame.mixer.music.stop()
+                pygame.time.delay(200)
 
             # 玩家绘制
             p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
@@ -343,10 +363,19 @@ def main():
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
             move_item(wall,-1500,-725) #墙
-            static_item(open_bar[0], 30, 30) #开箱进度条
-            static_item(health2, LOGIC_W//2-125, LOGIC_H//2-140) #血条
-            static_item(health1, LOGIC_W//2-122, LOGIC_H//2-140) #血条2
+            #static_item(open_bar[0], 30, 30) #开箱进度条
             static_item(rec, 70, 1550) #换弹药
+            draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100)
+            if developer_mode:
+                fps = int(clock.get_fps())
+                fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
+                current_time = pygame.time.get_ticks()
+                current_time_text = ui_font.render(f"Time: {current_time//1000}s", True, (255, 255, 0))
+                canvas.blit(fps_text, (120, 10))
+                canvas.blit(current_time_text, (120, 50))
+                health_text = ui_font.render(f"HP: {player_hp}", True, (255, 255, 0))
+                canvas.blit(health_text, (120, 90))
+                
 
             if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                 scene = 'RESULT'
