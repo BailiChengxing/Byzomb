@@ -20,7 +20,7 @@ def main():
     pygame.display.set_icon(icon_img)
     show1 = False
     alpha = 0
-    developer_mode = False  # 开发者模式开关
+    developer_mode = True  # 开发者模式开关
 
 
     def load(file,x=None,y=None):#加载图片并根据参数调整大小
@@ -94,6 +94,7 @@ def main():
 
     title_font = get_font(100)
     ui_font = get_font(40)
+    score_font = get_font(200)
     clock = pygame.time.Clock()
 
     # --- 2. 资源加载与处理 ---
@@ -103,6 +104,7 @@ def main():
     # 背景音乐加载
     bgm_path = "codemao/music/bgm.mp3"
     bgm_path2 = "codemao/music/bgm2.mp3"
+    bgm_path3 = "codemao/music/bgm3.mp3"
     #title_img图片加载
     title_img = pygame.image.load("codemao/UI/Byzomb.png").convert_alpha()
     title_img = pygame.transform.scale(title_img, (1716, 500))
@@ -123,6 +125,11 @@ def main():
     btn_close_normal = load(file="codemao/UI/close1.png",x=100)
     btn_close_hover = load(file="codemao/UI/close2.png",x=100)
     help_paper = load(file="codemao/UI/help_page2.png",x=3000)
+
+    #加载返回按钮
+    btn_back_normal = load(file="codemao/UI/back1.png",x=BTN_W*0.5)
+    btn_back_hover = load(file="codemao/UI/back2.png",x=BTN_W*0.5)
+
     rec=load(file="codemao/UI/rec.png",x=190) #换弹药
 
     #加载围栏
@@ -287,6 +294,10 @@ def main():
                 grave_move=0 #墓碑移动距离
                 grave_a=0 #墓碑加速度
                 grave_alpha=0 #墓碑透明度
+                wall_alpha=255 #墙透明度
+                final_x, final_y = None, None #墙死后玩家位置
+                wall.set_alpha(wall_alpha)
+                wall_life.set_alpha(wall_alpha)
                 reload_data = {#弹药系统预留
                     "is_reloading": False,
                     "start_time": 0,
@@ -411,7 +422,8 @@ def main():
             move_item(wall_life,-1480,1050) #墙血量
             #static_item(open_bar[0], 30, 30) #开箱进度条
             static_item(rec, 70, 1550) #换弹药
-            draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
+            if wall_delay_hp > 0:
+                draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
             if developer_mode:
@@ -424,8 +436,10 @@ def main():
                 canvas.blit(health_text, (120, 90))
                 location_text = ui_font.render(f"cam_x: {cam_x}, cam_y: {cam_y}", True, (255, 255, 0))
                 canvas.blit(location_text, (120, 130))
-                if draw_btn("buttun", 120, 200, 150, 60 ,(60, 60, 60)):
-                    wall_hp -= 10
+                location_text2 = ui_font.render(f"player_world_x: {player_world_x}, player_world_y: {player_world_y}", True, (255, 255, 0))
+                canvas.blit(location_text2, (120, 170))
+                if draw_btn("buttun", 120, 240, 150, 60 ,(60, 60, 60)):
+                    player_hp -= 10
                 if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
@@ -441,28 +455,48 @@ def main():
                 if grave_move > 200:
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
+                    pygame.mixer.music.load(bgm_path3)
+                    pygame.mixer.music.set_volume(0.6) # 设置音量
+                    pygame.mixer.music.play(-1) # 循环播放音乐
                     pygame.time.delay(200)
             elif wall_hp <= 0:
-                #move_item(player_frames[0],cam_x,cam_y)
-                #move_item(weapon1[0],cam_x,cam_y+55)
+                if final_x == None and final_y == None:
+                    final_x , final_y = player_world_x, player_world_y
+                move_item(player_frames[0],final_x,final_y)
+                move_item(weapon1[0],final_x,final_y+55)
                 if cam_x < 1500:
                     player_world_x -= 30
                 else:
                     if wall_delay_hp <= 0:
-                        scene = 'RESULT'
-                        pygame.mixer.music.stop()
-                        pygame.time.delay(200)
+                        wall_alpha -= 5
+                        wall.set_alpha(wall_alpha)
+                        wall_life.set_alpha(wall_alpha)
+                        if wall_alpha <= 0:
+                            scene = 'RESULT'
+                            pygame.mixer.music.stop()
+                            pygame.mixer.music.set_volume(0.6) # 设置音量
+                            pygame.mixer.music.play(-1) # 循环播放音乐
+                            pygame.time.delay(200)
+                            pygame.mixer.music.load(bgm_path3)
 
         elif scene == 'RESULT':
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img3, (x + offset_x, y + offset_y))
-            res_msg = title_font.render("Game Over", True, (255, 0, 0))
-            canvas.blit(res_msg, res_msg.get_rect(center=(LOGIC_W//2, LOGIC_H//3)))
-            if draw_btn("返回菜单", LOGIC_W//2-150, LOGIC_H//2, 300, 80, (50, 150, 255)):
-                scene = 'MENU'
-                pygame.time.delay(200)
+            res_msg = title_font.render("得分：", True, (211,211,211))
+            title_font.set_bold(True)
+            canvas.blit(res_msg, res_msg.get_rect(center=(LOGIC_W//2+30, LOGIC_H//3)))
 
+            score_msg = score_font.render("0", True, (211,211,211))
+            score_font.set_bold(True)
+            canvas.blit(score_msg, score_msg.get_rect(center=(LOGIC_W//2, LOGIC_H//3+320)))
+            '''if draw_btn("返回菜单", LOGIC_W//2-150, LOGIC_H//2, 300, 80, (50, 150, 255)):
+                scene = 'MENU'
+                pygame.time.delay(200)'''
+            if btn(btn_back_normal, btn_back_hover, btn_x+223, btn_y+350):
+                scene = 'MENU'
+                pygame.mixer.music.stop()
+                pygame.time.delay(200)
         # 缩放投影
         win_w, win_h = screen.get_size()
         nonlocal_current_scale = min(win_w / LOGIC_W, win_h / LOGIC_H)
