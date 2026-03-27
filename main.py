@@ -24,6 +24,7 @@ def main():
     developer_mode = False  # 开发者模式开关
     mute = False  # 静音状态
     mouse_was_pressed = False
+    current_time = pygame.time.get_ticks()
     developer_show = ()
 
 
@@ -168,7 +169,10 @@ def main():
     weapon1=load_ls(file=["codemao/weapon/mondragon.png"],x=320) #武器1
     weapon2=weapon1
     grave=load(file="codemao/grave.png",y=230) #墓碑
-    
+    #加载空投
+    drop1=load(file="codemao/drop1.png",y=230)
+    drop2=load(file="codemao/drop2.png",y=530)
+
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
         item_draw_y = y + cam_y
@@ -296,6 +300,12 @@ def main():
                 if scene == 'GAME' and player_hp > 0 and wall_hp > 0:
                     if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
                         show2 = not show2
+                        if show2:
+                            # 记录开始暂停的时间点
+                            start_pause_time = pygame.time.get_ticks()
+                        else:
+                            # 取消暂停时，计算刚才停了多久，并累加到总暂停时间里
+                            total_paused_time += (pygame.time.get_ticks() - start_pause_time)
                     if event.key == pygame.K_F3: #开发者模式开关
                         developer_mode = not developer_mode
                     if show2 == False:
@@ -344,6 +354,10 @@ def main():
                 wall.set_alpha(wall_alpha)
                 wall_life.set_alpha(wall_alpha)
                 show2 = False
+                last_drop_time = -2500 #上次空投时间戳
+                total_paused_time = 0
+                start_pause_time = 0
+                begin_time = pygame.time.get_ticks() #游戏开始时间戳
                 reload_data = {#弹药系统预留
                     "is_reloading": False,
                     "start_time": 0,
@@ -374,7 +388,8 @@ def main():
 
 
         elif scene == 'GAME':
-            current_time = pygame.time.get_ticks()
+            if show2 == False:
+                current_time = pygame.time.get_ticks() - total_paused_time - begin_time
             # 移动逻辑
             if player_hp > 0 and wall_hp > 0 and show2 == False:
 
@@ -409,6 +424,13 @@ def main():
             # --- 碰撞检测准备 ---
             # 玩家在逻辑世界中的矩形 (x, y, w, h)
             player_rect = pygame.Rect(player_world_x, player_world_y, PLAYER_SIZE, PLAYER_SIZE)
+            #空投绘制
+            move_item(drop1, 0, 0)
+            if current_time - last_drop_time > 32000: #每32秒刷新一次空投
+                drop_x,drop_y = random.randint(400,4800),random.randint(300,1800)
+                #move_item(drop1, 3000, 1000)
+                #move_item(drop2, 3300, 680)
+                last_drop_time = current_time
 
             # --- 敌人更新与绘制 ---
             for e in enemies[:]:
@@ -448,7 +470,6 @@ def main():
             if add_hp > 0:
                 player_hp += 0.2
                 add_hp -= 0.2
-
             # 玩家绘制
             if wall_hp > 0:
                 if keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_w] or keys[pygame.K_s]:
@@ -472,6 +493,9 @@ def main():
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
+
+
+
             #暂停菜单
             if show2:
                 rect = img.get_rect()
@@ -479,7 +503,13 @@ def main():
                 pause_page.set_alpha(255)
                 canvas.blit(pause_page, center(pause_page,1600,900))
                 if btn(continue_normal, continue_hover, 1330, 900):
-                    show2 = False
+                    show2 = not show2
+                    if show2:
+                        # 记录开始暂停的时间点
+                        start_pause_time = pygame.time.get_ticks()
+                    else:
+                        # 取消暂停时，计算刚才停了多久，并累加到总暂停时间里
+                        total_paused_time += (pygame.time.get_ticks() - start_pause_time)
                 if btn(exit_normal, exit_hover, 930, 900):
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
@@ -499,6 +529,9 @@ def main():
                         pygame.mixer.music.set_volume(0.6) # 取消静音
                         game_over_sound.set_volume(0.2) # 取消静音
                         mute = False
+
+
+
             if developer_mode:
                 fps = int(clock.get_fps())
                 fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
@@ -511,9 +544,11 @@ def main():
                 canvas.blit(location_text, (120, 130))
                 location_text2 = ui_font.render(f"player_world_x: {player_world_x}, player_world_y: {player_world_y}", True, (255, 255, 0))
                 canvas.blit(location_text2, (120, 170))
-                if draw_btn("sub_hp", 120, 240, 150, 60 ,(60, 60, 60)):
+                frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
+                canvas.blit(frame_counter_text, (120, 210))
+                if draw_btn("sub_hp", 120, 280, 150, 60 ,(60, 60, 60)):
                     player_hp -= 10
-                if draw_btn("sub_wall_hp", 120, 310, 150, 60 ,(60, 60, 60)):
+                if draw_btn("sub_wall_hp", 120, 350, 150, 60 ,(60, 60, 60)):
                     wall_hp -= 10
                 game_over_sound
                 if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
