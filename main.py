@@ -19,8 +19,10 @@ def main():
     icon_img = pygame.image.load("codemao/r-logo.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
     show1 = False
+    show2 = False
     alpha = 0
     developer_mode = True  # 开发者模式开关
+
 
 
     def load(file,x=None,y=None):#加载图片并根据参数调整大小
@@ -105,6 +107,12 @@ def main():
     bgm_path = "codemao/music/bgm.mp3"
     bgm_path2 = "codemao/music/bgm2.mp3"
     bgm_path3 = "codemao/music/bgm3.mp3"
+    bgm_path4 = "codemao/music/bgm4.mp3"
+    bgm_path5 = "codemao/music/bgm5.mp3"
+    game_over_sound = pygame.mixer.Sound("codemao/music/game_over1.wav")
+    game_over_sound.set_volume(0.2)
+    bgm_tuple=(bgm_path,bgm_path4,bgm_path5)
+    play_bgm = bgm_tuple[random.randint(0,2)]
     #title_img图片加载
     title_img = pygame.image.load("codemao/UI/Byzomb.png").convert_alpha()
     title_img = pygame.transform.scale(title_img, (1716, 500))
@@ -129,6 +137,15 @@ def main():
     #加载返回按钮
     btn_back_normal = load(file="codemao/UI/back1.png",x=BTN_W*0.5)
     btn_back_hover = load(file="codemao/UI/back2.png",x=BTN_W*0.5)
+
+    #加载暂停菜单
+    menu_normal = load(file="codemao/UI/menu1.png",x=180)
+    menu_hover = load(file="codemao/UI/menu2.png",x=180)
+    continue_normal = load(file="codemao/UI/continue1.png",x=180)
+    continue_hover = load(file="codemao/UI/continue2.png",x=180)
+    exit_normal = load(file="codemao/UI/exit1.png",x=180)
+    exit_hover = load(file="codemao/UI/exit2.png",x=180)
+    pause_page = load(file="codemao/UI/pause_page.png",x=1700)
 
     rec=load(file="codemao/UI/rec.png",x=190) #换弹药
 
@@ -257,6 +274,8 @@ def main():
                 if scene == 'GAME'and player_hp > 0 and wall_hp > 0:
                     if event.key == pygame.K_r: #换弹
                         add_hp+=5
+                    if event.key == pygame.K_ESCAPE:
+                        show2 = not show2
 
         canvas.fill((0, 0, 0))
 
@@ -298,6 +317,7 @@ def main():
                 final_x, final_y = None, None #墙死后玩家位置
                 wall.set_alpha(wall_alpha)
                 wall_life.set_alpha(wall_alpha)
+                show2 = False
                 reload_data = {#弹药系统预留
                     "is_reloading": False,
                     "start_time": 0,
@@ -307,7 +327,7 @@ def main():
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
                 if os.path.exists(bgm_path):
                     pygame.mixer.music.stop()
-                    pygame.mixer.music.load(bgm_path)
+                    pygame.mixer.music.load(play_bgm)
                     pygame.mixer.music.set_volume(0.6) # 设置音量
                     pygame.mixer.music.play(-1) # 循环播放音乐
                 pygame.time.delay(200)
@@ -330,6 +350,7 @@ def main():
             current_time = pygame.time.get_ticks()
             # 移动逻辑
             if player_hp > 0 and wall_hp > 0:
+
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_a]: player_world_x -= player_speed
                 if keys[pygame.K_d]: player_world_x += player_speed
@@ -382,7 +403,7 @@ def main():
                     enemy_frames[e_idx].set_alpha(e["alpha"])
                     canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
                 
-                if e["x"] <= -ENEMY_SIZE-50:
+                if e["x"] <= -ENEMY_SIZE-250: #敌人走出左边界后消失
                     e["alpha"] -= 5
                     if e["alpha"] <= 0:
                         wall_hp -= 5
@@ -426,6 +447,23 @@ def main():
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
+            #暂停菜单
+            if show2:
+                rect = img.get_rect()
+                rect.center = (1600, 900)
+                pause_page.set_alpha(255)
+                canvas.blit(pause_page, center(pause_page,1600,900))
+                if btn(continue_normal, continue_hover, 1530, 900):
+                    show2 = False
+                if btn(exit_normal, exit_hover, 1030, 900):
+                    scene = 'RESULT'
+                    pygame.mixer.music.stop()
+                    pygame.time.delay(200)
+                if btn(menu_normal, menu_hover, 2030, 900):
+                    play_bgm = bgm_tuple[random.randint(0,2)]
+                    scene = 'MENU'
+                    pygame.mixer.music.stop()
+                    pygame.time.delay(200)
             if developer_mode:
                 fps = int(clock.get_fps())
                 fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
@@ -446,6 +484,9 @@ def main():
                     pygame.time.delay(200)
             
             if player_hp <= 0:
+                game_over_sound.play()
+                if pygame.mixer.music.get_busy():
+                    pygame.mixer.music.stop()
                 grave_move+=2+grave_a #墓碑移动
                 grave_a+=0.5 #墓碑加速度
                 if grave_alpha < 255:
@@ -453,18 +494,18 @@ def main():
                     grave.set_alpha(grave_alpha)
                 static_item(grave, (LOGIC_W//2 - PLAYER_SIZE//2)-20,((LOGIC_H//2 - PLAYER_SIZE//2)-224)+grave_move) #玩家死亡后绘制墓碑
                 if grave_move > 200:
+                    pygame.time.delay(600)
                     scene = 'RESULT'
-                    pygame.mixer.music.stop()
-                    pygame.mixer.music.load(bgm_path3)
-                    pygame.mixer.music.set_volume(0.6) # 设置音量
-                    pygame.mixer.music.play(-1) # 循环播放音乐
                     pygame.time.delay(200)
             elif wall_hp <= 0:
+                if pygame.mixer.music.get_busy():
+                    pygame.mixer.music.stop()
                 if final_x == None and final_y == None:
                     final_x , final_y = player_world_x, player_world_y
                 move_item(player_frames[0],final_x,final_y)
                 move_item(weapon1[0],final_x,final_y+55)
                 if cam_x < 1500:
+                    game_over_sound.play()
                     player_world_x -= 30
                 else:
                     if wall_delay_hp <= 0:
@@ -473,11 +514,7 @@ def main():
                         wall_life.set_alpha(wall_alpha)
                         if wall_alpha <= 0:
                             scene = 'RESULT'
-                            pygame.mixer.music.stop()
-                            pygame.mixer.music.set_volume(0.6) # 设置音量
-                            pygame.mixer.music.play(-1) # 循环播放音乐
                             pygame.time.delay(200)
-                            pygame.mixer.music.load(bgm_path3)
 
         elif scene == 'RESULT':
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
@@ -494,10 +531,11 @@ def main():
                 scene = 'MENU'
                 pygame.time.delay(200)'''
             if btn(btn_back_normal, btn_back_hover, btn_x+223, btn_y+350):
+                play_bgm = bgm_tuple[random.randint(0,2)]
                 scene = 'MENU'
                 pygame.mixer.music.stop()
                 pygame.time.delay(200)
-        # 缩放投影
+                # 缩放投影
         win_w, win_h = screen.get_size()
         nonlocal_current_scale = min(win_w / LOGIC_W, win_h / LOGIC_H)
         new_size = (int(LOGIC_W * nonlocal_current_scale), int(LOGIC_H * nonlocal_current_scale))
