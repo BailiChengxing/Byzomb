@@ -21,7 +21,10 @@ def main():
     show1 = False
     show2 = False
     alpha = 0
-    developer_mode = True  # 开发者模式开关
+    developer_mode = False  # 开发者模式开关
+    mute = False  # 静音状态
+    mouse_was_pressed = False
+    developer_show = ()
 
 
 
@@ -145,6 +148,10 @@ def main():
     continue_hover = load(file="codemao/UI/continue2.png",x=180)
     exit_normal = load(file="codemao/UI/exit1.png",x=180)
     exit_hover = load(file="codemao/UI/exit2.png",x=180)
+    mute_f_normal = load(file="codemao/UI/mute1.png",x=180)
+    mute_f_hover = load(file="codemao/UI/mute2.png",x=180)
+    mute_t_normal = load(file="codemao/UI/mute3.png",x=180)
+    mute_t_hover = load(file="codemao/UI/mute4.png",x=180)
     pause_page = load(file="codemao/UI/pause_page.png",x=1700)
 
     rec=load(file="codemao/UI/rec.png",x=190) #换弹药
@@ -249,17 +256,32 @@ def main():
         txt = ui_font.render(text, True, (255, 255, 255))
         canvas.blit(txt, txt.get_rect(center=(x + w/2, y + h/2)))
         return is_hover and pygame.mouse.get_pressed()[0]
-    def btn(img_normal, img_hover, x, y):
-        # 1. 获取逻辑鼠标位置
+    
+    '''def btn1(img_normal, img_hover, x, y):#长按按钮函数，返回是否被长按
         l_mx, l_my = get_logic_mouse()
-        # 2. 获取图片矩形区域用于碰撞检测
         rect = img_normal.get_rect(topleft=(x, y))
         is_hover = rect.collidepoint(l_mx, l_my)
         curr_img = img_hover if is_hover else img_normal
         canvas.blit(curr_img, (x, y))
-        
-        # 5. 返回是否被点击
-        return is_hover and pygame.mouse.get_pressed()[0]
+        return is_hover and pygame.mouse.get_pressed()[0]'''
+    
+    def btn(img_normal, img_hover, x, y):#点击按钮函数，返回是否被点击
+        global mouse_was_pressed
+        l_mx, l_my = get_logic_mouse()
+        # 获取图片矩形区域
+        rect = img_normal.get_rect(topleft=(x, y))
+        is_hover = rect.collidepoint(l_mx, l_my)
+        curr_img = img_hover if is_hover else img_normal
+        canvas.blit(curr_img, (x, y))
+        clicked = False
+        mouse_down = pygame.mouse.get_pressed()[0] # 获取左键实时状态
+        if is_hover and mouse_down:
+            if not mouse_was_pressed:
+                clicked = True
+                mouse_was_pressed = True # 上锁
+        elif not mouse_down:
+            mouse_was_pressed = False
+        return clicked
 
     # --- 5. 主循环 ---
     while True:
@@ -271,11 +293,14 @@ def main():
             if event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
             if event.type == pygame.KEYDOWN:
-                if scene == 'GAME'and player_hp > 0 and wall_hp > 0:
-                    if event.key == pygame.K_r: #换弹
-                        add_hp+=5
-                    if event.key == pygame.K_ESCAPE:
+                if scene == 'GAME' and player_hp > 0 and wall_hp > 0:
+                    if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
                         show2 = not show2
+                    if event.key == pygame.K_F3: #开发者模式开关
+                        developer_mode = not developer_mode
+                    if show2 == False:
+                        if event.key == pygame.K_r: #换弹
+                            add_hp+=5
 
         canvas.fill((0, 0, 0))
 
@@ -285,7 +310,8 @@ def main():
             else:
                 if os.path.exists(bgm_path2):
                     pygame.mixer.music.load(bgm_path2)
-                    pygame.mixer.music.set_volume(0.6) # 设置音量
+                    if mute == False:
+                        pygame.mixer.music.set_volume(0.6) # 设置音量
                     pygame.mixer.music.play(-1) # 循环播放音乐
 
             # 背景渲染
@@ -328,7 +354,8 @@ def main():
                 if os.path.exists(bgm_path):
                     pygame.mixer.music.stop()
                     pygame.mixer.music.load(play_bgm)
-                    pygame.mixer.music.set_volume(0.6) # 设置音量
+                    if mute == False:
+                        pygame.mixer.music.set_volume(0.6) # 设置音量
                     pygame.mixer.music.play(-1) # 循环播放音乐
                 pygame.time.delay(200)
             
@@ -349,7 +376,7 @@ def main():
         elif scene == 'GAME':
             current_time = pygame.time.get_ticks()
             # 移动逻辑
-            if player_hp > 0 and wall_hp > 0:
+            if player_hp > 0 and wall_hp > 0 and show2 == False:
 
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_a]: player_world_x -= player_speed
@@ -374,9 +401,10 @@ def main():
                     canvas.blit(tile_img2, (x + offset_x, y + offset_y))
             move_item(fence,0,-100) #上围栏
             # 敌人生成
-            if frame_counter % SPAWN_RATE == 0:
-                spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
-                enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter, "alpha": 255})
+            if wall_hp > 0 and player_hp > 0 and show2 == False:
+                if frame_counter % SPAWN_RATE == 0:
+                    spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
+                    enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter, "alpha": 255})
 
             # --- 碰撞检测准备 ---
             # 玩家在逻辑世界中的矩形 (x, y, w, h)
@@ -384,30 +412,27 @@ def main():
 
             # --- 敌人更新与绘制 ---
             for e in enemies[:]:
-                e["x"] -= ENEMY_SPEED 
                 draw_x, draw_y = e["x"] + cam_x, e["y"] + cam_y
-                
-                # 创建敌人的矩形进行碰撞判定
-                enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
-                
-                # 【碰撞逻辑】
-                if wall_hp > 0 and player_hp > 0: #只有墙和玩家都没死才检测碰撞
+                if wall_hp > 0 and player_hp > 0 and show2 == False:
+                    e["x"] -= ENEMY_SPEED 
+                    # 创建敌人的矩形进行碰撞判定
+                    enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
+                    # 【碰撞逻辑】
                     if player_rect.colliderect(enemy_rect):
                         if current_time - last_hit_time > hit_cooldown:
                             player_hp -= 5
                             last_hit_time = current_time #更新被撞时间戳
+                    if e["x"] <= -ENEMY_SIZE-250: #敌人走出左边界后消失
+                        e["alpha"] -= 5
+                        if e["alpha"] <= 0:
+                            wall_hp -= 5
+                            enemies.remove(e)
 
                 if -ENEMY_SIZE < draw_x < LOGIC_W and -ENEMY_SIZE < draw_y < LOGIC_H:
                     alive_ticks = frame_counter - e["born"]
                     e_idx = (alive_ticks // ENEMY_ANIM_SPEED) % len(enemy_frames)
                     enemy_frames[e_idx].set_alpha(e["alpha"])
                     canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
-                
-                if e["x"] <= -ENEMY_SIZE-250: #敌人走出左边界后消失
-                    e["alpha"] -= 5
-                    if e["alpha"] <= 0:
-                        wall_hp -= 5
-                        enemies.remove(e)
 
             if delay_hp > player_hp:
                 delay_hp -= 0.2
@@ -453,17 +478,27 @@ def main():
                 rect.center = (1600, 900)
                 pause_page.set_alpha(255)
                 canvas.blit(pause_page, center(pause_page,1600,900))
-                if btn(continue_normal, continue_hover, 1530, 900):
+                if btn(continue_normal, continue_hover, 1330, 900):
                     show2 = False
-                if btn(exit_normal, exit_hover, 1030, 900):
+                if btn(exit_normal, exit_hover, 930, 900):
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
                     pygame.time.delay(200)
-                if btn(menu_normal, menu_hover, 2030, 900):
+                if btn(menu_normal, menu_hover, 2130, 900):
                     play_bgm = bgm_tuple[random.randint(0,2)]
                     scene = 'MENU'
                     pygame.mixer.music.stop()
                     pygame.time.delay(200)
+                if mute == False:
+                    if btn(mute_f_normal, mute_f_hover, 1730, 900):
+                        pygame.mixer.music.set_volume(0) # 静音
+                        game_over_sound.set_volume(0) # 静音
+                        mute = True
+                else:
+                    if btn(mute_t_normal, mute_t_hover, 1730, 900):
+                        pygame.mixer.music.set_volume(0.6) # 取消静音
+                        game_over_sound.set_volume(0.2) # 取消静音
+                        mute = False
             if developer_mode:
                 fps = int(clock.get_fps())
                 fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
@@ -476,14 +511,17 @@ def main():
                 canvas.blit(location_text, (120, 130))
                 location_text2 = ui_font.render(f"player_world_x: {player_world_x}, player_world_y: {player_world_y}", True, (255, 255, 0))
                 canvas.blit(location_text2, (120, 170))
-                if draw_btn("buttun", 120, 240, 150, 60 ,(60, 60, 60)):
+                if draw_btn("sub_hp", 120, 240, 150, 60 ,(60, 60, 60)):
                     player_hp -= 10
+                if draw_btn("sub_wall_hp", 120, 310, 150, 60 ,(60, 60, 60)):
+                    wall_hp -= 10
+                game_over_sound
                 if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
                     pygame.time.delay(200)
             
-            if player_hp <= 0:
+            if player_hp <= 0:#玩家死亡
                 game_over_sound.play()
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
@@ -497,7 +535,7 @@ def main():
                     pygame.time.delay(600)
                     scene = 'RESULT'
                     pygame.time.delay(200)
-            elif wall_hp <= 0:
+            elif wall_hp <= 0:#墙被破坏
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
                 if final_x == None and final_y == None:
@@ -531,6 +569,7 @@ def main():
                 scene = 'MENU'
                 pygame.time.delay(200)'''
             if btn(btn_back_normal, btn_back_hover, btn_x+223, btn_y+350):
+                game_over_sound.stop()
                 play_bgm = bgm_tuple[random.randint(0,2)]
                 scene = 'MENU'
                 pygame.mixer.music.stop()
