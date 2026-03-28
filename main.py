@@ -21,6 +21,7 @@ def main():
     mouse_was_pressed = False
     show1 = False
     show2 = False #游戏是否暂停
+    drop_status = False
     developer_mode = False  # 开发者模式开关
     mute = False  # 静音状态
     drop_x,drop_y = random.randint(400,4800),random.randint(-200,1500)
@@ -172,7 +173,6 @@ def main():
     #加载空投
     drop1=load(file="codemao/drop1.png",y=660)
     drop2=load(file="codemao/drop2.png",y=660)
-    drop_rect = None
 
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -236,7 +236,7 @@ def main():
     scene = 'MENU'
     WORLD_WIDTH, WORLD_HEIGHT = move_x, move_y
     player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
-    player_speed = 50
+    player_speed = 10
     frame_counter = 0 
 
     # 缩放相关变量
@@ -287,6 +287,11 @@ def main():
         elif not mouse_down:
             mouse_was_pressed = False
         return clicked
+    def draw_drop_rect():
+        return pygame.Rect(drop_x+130, drop_y+445, 180, 125)
+    drop_rect = pygame.Rect(drop_x+130, drop_y+445, 180, 125)
+
+
 
     # --- 5. 主循环 ---
     while True:
@@ -362,6 +367,7 @@ def main():
                 t_drop_y = -1410 #空投真实y坐标
                 drop_alpha = 255 #空投图标透明度
                 drop_opening = 0 #开箱动画计时
+                drop_status = False #是否可开箱
                 reload_data = {#弹药系统预留
                     "is_reloading": False,
                     "start_time": 0,
@@ -431,10 +437,12 @@ def main():
 
             #空投绘制
             if show2 == False:
-                drop_rect= drop2.get_rect()
-                if player_rect.colliderect(drop_rect):
+                if player_rect.colliderect(drop_rect) and drop_status == True:
                     drop_opening += 1
-            move_item(drop1, 4800, -1410)
+                    if drop_opening >= 100:
+                        drop_status = False
+                if drop_status == False:
+                    drop_rect=pygame.Rect(4800, -1410, 0, 0)
             if current_time - last_drop_time > drop_cooldown: #每32秒刷新一次空投
                 drop_x,drop_y = random.randint(400,4800),random.randint(-200,1500)
                 t_drop_y = -1410
@@ -449,10 +457,14 @@ def main():
                     drop_alpha = 255
                     drop2.set_alpha(drop_alpha)
                     move_item(drop2, drop_x, t_drop_y)
+                    drop_status=True
+                    drop_rect=draw_drop_rect()
                 else:
                     drop_alpha = 160
                     drop2.set_alpha(drop_alpha)
-                    move_item(drop2, drop_x, t_drop_y)        
+                    move_item(drop2, drop_x, t_drop_y)
+                    drop_status=True
+                    drop_rect=draw_drop_rect()        
             elif drop_opening < 100:
                 if drop_y > t_drop_y:
                     if show2 == False:
@@ -460,6 +472,8 @@ def main():
                     move_item(drop1, drop_x, t_drop_y)
                 else:
                     move_item(drop2, drop_x, t_drop_y)
+                    drop_status=True
+                    drop_rect=draw_drop_rect()
 
 
 
