@@ -28,6 +28,11 @@ def main():
     drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔30-40秒
     current_time = pygame.time.get_ticks()
     developer_show = ()
+    if os.name == 'nt': # 只在 Windows 生效
+        import ctypes
+        # 获取当前窗口句柄并禁用输入法
+        hwnd = pygame.display.get_wm_info()['window']
+        ctypes.windll.imm32.ImmAssociateContext(hwnd, None)
 
 
 
@@ -413,7 +418,6 @@ def main():
                 current_time = pygame.time.get_ticks() - total_paused_time - begin_time
             # 移动逻辑
             if player_hp > 0 and wall_hp > 0 and show2 == False:
-
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_a]: player_world_x -= player_speed
                 if keys[pygame.K_d]: player_world_x += player_speed
