@@ -71,6 +71,19 @@ def main():
         highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
         surface.blit(highlight_surf, (x, y))
 
+    def open_bar(surface, x, y, current_hp, max_hp):
+        bar_width = 230    # 血条总长度（像素）
+        bar_height = 22    # 血条高度
+        ratio = max(0, min(current_hp / max_hp, 1))
+        pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
+        color = (89, 212, 205)
+        pygame.draw.rect(surface, color, (x, y, int(bar_width * ratio), bar_height))
+        pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+        # 创建一个带 Alpha 的临时 Surface 来画半透明高光
+        highlight_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
+        highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
+        surface.blit(highlight_surf, (x, y))
+
     def load_ls(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
         :param file:图片路径
@@ -166,7 +179,6 @@ def main():
     tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
-    open_bar=load_ls(file=["codemao/open1.png","codemao/open2.png","codemao/open3.png"],y=50) #开箱子进度条
     weapon1=load_ls(file=["codemao/weapon/mondragon.png"],x=320) #武器1
     weapon2=weapon1
     grave=load(file="codemao/grave.png",y=230) #墓碑
@@ -236,7 +248,7 @@ def main():
     scene = 'MENU'
     WORLD_WIDTH, WORLD_HEIGHT = move_x, move_y
     player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
-    player_speed = 10
+    player_speed = 50
     frame_counter = 0 
 
     # 缩放相关变量
@@ -439,8 +451,12 @@ def main():
             if show2 == False:
                 if player_rect.colliderect(drop_rect) and drop_status == True:
                     drop_opening += 1
+                    open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
+                    pass
                     if drop_opening >= 100:
                         drop_status = False
+                elif  not player_rect.colliderect(drop_rect) and drop_status ==True:
+                    drop_opening = 0
                 if drop_status == False:
                     drop_rect=pygame.Rect(4800, -1410, 0, 0)
             if current_time - last_drop_time > drop_cooldown: #每32秒刷新一次空投
@@ -535,7 +551,6 @@ def main():
             move_item(tree2,5400,-1900)#右树
             move_item(wall,-1500,-725) #墙
             move_item(wall_life,-1480,1050) #墙血量
-            #static_item(open_bar[0], 30, 30) #开箱进度条
             static_item(rec, 70, 1550) #换弹药
             if wall_delay_hp > 0:
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
