@@ -209,7 +209,7 @@ def main():
             player_frames.append(s)
 
     # 敌人动画加载
-    ENEMY_SIZE = 215
+    ENEMY_SIZE = 225
     ENEMY_ANIM_SPEED = 30 
     enemy_frames = []
     e_files = ["codemao/zombie/zombie1.png", "codemao/zombie/zombie2.png"]
@@ -380,6 +380,7 @@ def main():
                 drop_alpha = 255 #空投图标透明度
                 drop_opening = 0 #开箱动画计时
                 drop_status = False #是否可开箱
+                draw_open_bar= False
                 reload_data = {#弹药系统预留
                     "is_reloading": False,
                     "start_time": 0,
@@ -451,11 +452,13 @@ def main():
             if show2 == False:
                 if player_rect.colliderect(drop_rect) and drop_status == True:
                     drop_opening += 1
-                    open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
-                    pass
+                    draw_open_bar = True
+                    #open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
                     if drop_opening >= 100:
                         drop_status = False
+                        draw_open_bar = False
                 elif  not player_rect.colliderect(drop_rect) and drop_status ==True:
+                    draw_open_bar = False
                     drop_opening = 0
                 if drop_status == False:
                     drop_rect=pygame.Rect(4800, -1410, 0, 0)
@@ -552,6 +555,8 @@ def main():
             move_item(wall,-1500,-725) #墙
             move_item(wall_life,-1480,1050) #墙血量
             static_item(rec, 70, 1550) #换弹药
+            if draw_open_bar == True:
+                open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
             if wall_delay_hp > 0:
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
