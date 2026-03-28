@@ -16,14 +16,15 @@ def main():
     canvas = pygame.Surface((LOGIC_W, LOGIC_H))
     title="变异狂潮-十周年纪念版demo"
     pygame.display.set_caption(title)
-    icon_img = pygame.image.load("codemao/r-logo.png").convert_alpha() 
+    icon_img = pygame.image.load("codemao/r-logo2.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
+    mouse_was_pressed = False
     show1 = False
-    show2 = False
-    alpha = 0
+    show2 = False #游戏是否暂停
     developer_mode = False  # 开发者模式开关
     mute = False  # 静音状态
-    mouse_was_pressed = False
+    drop_x,drop_y = random.randint(400,4800),random.randint(-200,1500)
+    drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔30-40秒
     current_time = pygame.time.get_ticks()
     developer_show = ()
 
@@ -158,11 +159,10 @@ def main():
     rec=load(file="codemao/UI/rec.png",x=190) #换弹药
 
     #加载围栏
-    fence=pygame.image.load("codemao/Fence.png").convert_alpha()
-    fence= pygame.transform.scale(fence, (move_x, (61/1128)*move_x))
+    fence=load(file="codemao/Fence.png",x=move_x) #围栏
     #加载树林
     tree1=load(file="codemao/tree1.png",y=int(move_y+800)) #左树
-    tree2=load(file="codemao/tree2.png",y=int(move_y+3700)) #右树
+    tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
     open_bar=load_ls(file=["codemao/open1.png","codemao/open2.png","codemao/open3.png"],y=50) #开箱子进度条
@@ -170,8 +170,9 @@ def main():
     weapon2=weapon1
     grave=load(file="codemao/grave.png",y=230) #墓碑
     #加载空投
-    drop1=load(file="codemao/drop1.png",y=230)
-    drop2=load(file="codemao/drop2.png",y=530)
+    drop1=load(file="codemao/drop1.png",y=660)
+    drop2=load(file="codemao/drop2.png",y=660)
+    drop_rect = None
 
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -358,6 +359,9 @@ def main():
                 total_paused_time = 0
                 start_pause_time = 0
                 begin_time = pygame.time.get_ticks() #游戏开始时间戳
+                t_drop_y = -1410 #空投真实y坐标
+                drop_alpha = 255 #空投图标透明度
+                drop_opening = 0 #开箱动画计时
                 reload_data = {#弹药系统预留
                     "is_reloading": False,
                     "start_time": 0,
@@ -374,8 +378,6 @@ def main():
                 pygame.time.delay(200)
             
             if btn(btn_help_normal, btn_help_hover, btn_x, btn_y+320):
-                help_paper.set_alpha(alpha)
-                alpha = 0  # 从完全透明开始
                 show1 = True
             
             if show1:
@@ -424,13 +426,42 @@ def main():
             # --- 碰撞检测准备 ---
             # 玩家在逻辑世界中的矩形 (x, y, w, h)
             player_rect = pygame.Rect(player_world_x, player_world_y, PLAYER_SIZE, PLAYER_SIZE)
+
+
+
             #空投绘制
-            move_item(drop1, 0, 0)
-            if current_time - last_drop_time > 32000: #每32秒刷新一次空投
-                drop_x,drop_y = random.randint(400,4800),random.randint(300,1800)
-                #move_item(drop1, 3000, 1000)
-                #move_item(drop2, 3300, 680)
+            if show2 == False:
+                drop_rect= drop2.get_rect()
+                if player_rect.colliderect(drop_rect):
+                    drop_opening += 1
+            move_item(drop1, 4800, -1410)
+            if current_time - last_drop_time > drop_cooldown: #每32秒刷新一次空投
+                drop_x,drop_y = random.randint(400,4800),random.randint(-200,1500)
+                t_drop_y = -1410
+                move_item(drop1, drop_x, t_drop_y)
                 last_drop_time = current_time
+                drop_alpha = 255
+                drop2.set_alpha(drop_alpha)
+                drop_opening = 0
+                drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔15-30秒
+            elif drop_cooldown- current_time + last_drop_time < 5000 and drop_opening <100: #刷新前5秒闪烁提示
+                if (current_time // 400) % 2 == 0: #每600毫秒闪烁一次
+                    drop_alpha = 255
+                    drop2.set_alpha(drop_alpha)
+                    move_item(drop2, drop_x, t_drop_y)
+                else:
+                    drop_alpha = 160
+                    drop2.set_alpha(drop_alpha)
+                    move_item(drop2, drop_x, t_drop_y)        
+            elif drop_opening < 100:
+                if drop_y > t_drop_y:
+                    if show2 == False:
+                        t_drop_y += 10
+                    move_item(drop1, drop_x, t_drop_y)
+                else:
+                    move_item(drop2, drop_x, t_drop_y)
+
+
 
             # --- 敌人更新与绘制 ---
             for e in enemies[:]:
@@ -470,6 +501,9 @@ def main():
             if add_hp > 0:
                 player_hp += 0.2
                 add_hp -= 0.2
+
+
+
             # 玩家绘制
             if wall_hp > 0:
                 if keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_w] or keys[pygame.K_s]:
@@ -482,7 +516,7 @@ def main():
                         static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+55))
                     elif p_idx==1:
                         static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+45))
-            move_item(fence,0,2145) #下围栏
+            move_item(fence,0,2190) #下围栏
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
             move_item(wall,-1500,-725) #墙
@@ -546,9 +580,11 @@ def main():
                 canvas.blit(location_text2, (120, 170))
                 frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
                 canvas.blit(frame_counter_text, (120, 210))
-                if draw_btn("sub_hp", 120, 280, 150, 60 ,(60, 60, 60)):
+                some_text = ui_font.render(f"openning: {drop_opening}", True, (255, 255, 0))
+                canvas.blit(some_text, (120, 250))
+                if draw_btn("sub_hp", 120, 320, 150, 60 ,(60, 60, 60)):
                     player_hp -= 10
-                if draw_btn("sub_wall_hp", 120, 350, 150, 60 ,(60, 60, 60)):
+                if draw_btn("sub_wall_hp", 120, 390, 150, 60 ,(60, 60, 60)):
                     wall_hp -= 10
                 game_over_sound
                 if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
