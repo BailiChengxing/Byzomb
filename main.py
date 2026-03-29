@@ -11,6 +11,8 @@ def main():
     pygame.mixer.init()
     LOGIC_W, LOGIC_H = 3200, 1800
     win_w, win_h = 1600, 900
+    gun_pivot = [win_w // 2, win_h // 2]
+    
 
     screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
     canvas = pygame.Surface((LOGIC_W, LOGIC_H))
@@ -28,6 +30,7 @@ def main():
     drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔30-40秒
     current_time = pygame.time.get_ticks()
     developer_show = ()
+    sniper_mode = True #是否开启狙击枪模式
     if os.name == 'nt': # 只在 Windows 生效
         import ctypes
         # 获取当前窗口句柄并禁用输入法
@@ -113,6 +116,10 @@ def main():
             return ls
         except:
             print(f"Error loading image: {i}")
+    def draw_rotating_gun(surface, image, pivot, angle):
+        rotated_image = pygame.transform.rotate(image, angle)
+        new_rect = rotated_image.get_rect(center=pivot)
+        surface.blit(rotated_image, [new_rect])
 
 
     def get_font(size):
@@ -184,7 +191,7 @@ def main():
     tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
-    weapon1=load_ls(file=["codemao/weapon/mondragon.png"],x=320) #武器1
+    weapon1=load_ls(file=["codemao/weapon/empty.png","codemao/weapon/mondragon.png"],x=320) #武器1
     weapon2=weapon1
     grave=load(file="codemao/grave.png",y=230) #墓碑
     #加载空投
@@ -203,7 +210,8 @@ def main():
     
     # 角色动画加载
     PLAYER_SIZE = 200
-    ANIM_SPEED = 20 
+    ANIM_SPEED = 20
+    player_x,player_y=LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2
     player_frames = []
     p_files = ["codemao/player1.png", "codemao/player2.png"] 
 
@@ -290,6 +298,33 @@ def main():
         canvas.blit(curr_img, (x, y))
         return is_hover and pygame.mouse.get_pressed()[0]'''
     
+
+    def draw_aim_scope(surface, pos, size=40):
+        """
+        在指定位置绘制红色瞄准镜
+        :param surface: 绘图表面
+        :param pos: 鼠标位置 (x, y)
+        :param size: 瞄准镜基准大小 (建议范围 10-50)
+        """
+        RED = (255, 0, 0)
+        px, py = pos
+        # --- 1. 比例参数计算 ---
+        # 我们让所有尺寸都随 size 等比例变化
+        dot_radius = max(1, int(size * 0.2))      # 中心红点半径 (size的20%)
+        ring_radius = size                        # 外圈半径
+        ring_width = max(1, int(size * 0.15))     # 外圈线宽 (size的15%)
+        
+        line_gap = int(size * 0.6)                # 十字线起始点（距离中心的间隙）
+        line_length = int(size * 1.5)             # 十字线延伸终点
+        line_width = max(1, int(size * 0.1))      # 十字线宽度
+        # 绘制中心红点
+        pygame.draw.circle(surface, RED, pos, dot_radius)
+        pygame.draw.circle(surface, RED, pos, ring_radius, ring_width)
+        pygame.draw.line(surface, RED, (px - line_length, py), (px - line_gap, py), line_width)
+        pygame.draw.line(surface, RED, (px + line_gap, py), (px + line_length, py), line_width)
+        pygame.draw.line(surface, RED, (px, py - line_length), (px, py - line_gap), line_width)
+        pygame.draw.line(surface, RED, (px, py + line_gap), (px, py + line_length), line_width)
+    
     def btn(img_normal, img_hover, x, y):#点击按钮函数，返回是否被点击
         global mouse_was_pressed
         l_mx, l_my = get_logic_mouse()
@@ -301,9 +336,12 @@ def main():
         clicked = False
         mouse_down = pygame.mouse.get_pressed()[0] # 获取左键实时状态
         if is_hover and mouse_down:
-            if not mouse_was_pressed:
-                clicked = True
-                mouse_was_pressed = True # 上锁
+            try:
+                if not mouse_was_pressed:
+                    clicked = True
+                    mouse_was_pressed = True # 上锁
+            except:
+                pass
         elif not mouse_down:
             mouse_was_pressed = False
         return clicked
@@ -316,6 +354,13 @@ def main():
     # --- 5. 主循环 ---
     while True:
         frame_counter += 1 
+        # 获取鼠标实时坐标
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_x, mouse_y = mouse_pos
+        
+        # --- 枪械指向逻辑 ---
+        dx = mouse_x - gun_pivot[0]
+        dy = mouse_y - gun_pivot[1]
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -544,30 +589,41 @@ def main():
 
 
 
-            # 玩家绘制
+            
             if wall_hp > 0:
+                # 玩家绘制
                 if keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_w] or keys[pygame.K_s]:
                     p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
-                    canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
+                    canvas.blit(player_frames[p_idx], (player_x, player_y))
                 else:
-                    canvas.blit(player_frames[p_idx], (LOGIC_W//2 - PLAYER_SIZE//2, LOGIC_H//2 - PLAYER_SIZE//2))
+                    canvas.blit(player_frames[p_idx], (player_x, player_y))
+                #枪械绘制
                 if player_hp > 0:
-                    if p_idx==0:
-                        static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+55))
-                    elif p_idx==1:
-                        static_item(weapon1[0],int(LOGIC_W//2 - PLAYER_SIZE//2),int(LOGIC_H//2 - PLAYER_SIZE//2+45))
+                    if not sniper_mode:
+                        static_item(weapon1[1],player_x,player_y+55-10*p_idx)
+                    else:
+                        rads = math.atan2(dx, dy) #计算鼠标与玩家中心的角度
+                        final_angle = math.degrees(rads)-90
+                        #pygame.draw.circle(canvas, (0, 0, 255),[player_x+156,player_y+134-10*p_idx], 5)
+                        draw_rotating_gun(canvas, weapon1[1],[player_x+156,player_y+134-10*p_idx], final_angle)
+                if sniper_mode and show2==False:
+                    pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
+                else:
+                    pygame.mouse.set_visible(True)#暂停时显示鼠标指针
+
             move_item(fence,0,2190) #下围栏
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
             move_item(wall,-1500,-725) #墙
             move_item(wall_life,-1480,1050) #墙血量
-            static_item(rec, 70, 1550) #换弹药
             if draw_open_bar == True:
                 open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
             if wall_delay_hp > 0:
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
+            if sniper_mode and show2==False:#绘制瞄准镜
+                draw_aim_scope(canvas, get_logic_mouse())
 
             if show_num<1000:
                 if show_num >= 100:#显示主弹夹
