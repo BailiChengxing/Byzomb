@@ -96,23 +96,23 @@ def main():
         :param y:物品宽度
         '''
         ls=[]
-        for i in file:
-            if os.path.exists(i):
-                try:
-                    img = pygame.image.load(i).convert_alpha()
-                    width = img.get_width()   # 获取宽度
-                    height = img.get_height() # 获取高度
-                    ratio = height / width  # 计算宽高比
-                    if x is None:
-                        img = pygame.transform.scale(img, (int(y/ratio), y ))
-                    elif y is None:
-                        img = pygame.transform.scale(img, (x, int(x*ratio)))
-                    elif x is not None and y is not None:
-                        img = pygame.transform.scale(img, (x, y))
-                    ls.append(img)
-                    return ls
-                except:
-                    print(f"Error loading image: {i}")
+        try:
+            for i in file:
+                if os.path.exists(i):
+                        img = pygame.image.load(i).convert_alpha()
+                        width = img.get_width()   # 获取宽度
+                        height = img.get_height() # 获取高度
+                        ratio = height / width  # 计算宽高比
+                        if x is None:
+                            img = pygame.transform.scale(img, (int(y/ratio), y ))
+                        elif y is None:
+                            img = pygame.transform.scale(img, (x, int(x*ratio)))
+                        elif x is not None and y is not None:
+                            img = pygame.transform.scale(img, (x, y))
+                        ls.append(img)
+            return ls
+        except:
+            print(f"Error loading image: {i}")
 
 
     def get_font(size):
@@ -190,6 +190,9 @@ def main():
     #加载空投
     drop1=load(file="codemao/drop1.png",y=660)
     drop2=load(file="codemao/drop2.png",y=660)
+
+    num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
+    show_num = 299 #测试用数字
 
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -566,6 +569,27 @@ def main():
             if wall_hp > 0:
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
 
+            if show_num<1000:
+                if show_num >= 100:#显示主弹夹
+                    static_item(num_img[show_num//100], 70, 10) 
+                if show_num >= 10:
+                    static_item(num_img[(show_num//10)%10], 130, 10) 
+                static_item(num_img[show_num%10], 190, 10) 
+
+                if show_num >= 100:#显示副弹夹
+                    static_item(num_img[show_num//100], 270, 10) 
+                elif 100>show_num >= 10:
+                    static_item(num_img[(show_num//10)%10], 270, 10) 
+                else:
+                    static_item(num_img[show_num%10], 270, 10) 
+                if show_num >= 100:
+                    static_item(num_img[(show_num//10)%10], 330, 10) 
+                elif 100>show_num >= 10:
+                    static_item(num_img[show_num%10], 330, 10)
+                else:
+                    pass
+                if show_num >= 100:
+                    static_item(num_img[show_num%10], 390, 10)
 
 
             #暂停菜单
