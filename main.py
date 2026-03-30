@@ -218,7 +218,7 @@ def main():
     tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
-    weapon1=load_ls(file=["codemao/weapon/empty.png","codemao/weapon/mondragon.png"],x=320) #武器1
+    weapon1=load_ls(file=["codemao/weapon/empty.png","codemao/weapon/mondragon.png","codemao/weapon/Barrett.png"],x=320) #武器1
     weapon2=weapon1
     grave=load(file="codemao/grave.png",y=230) #墓碑
     #加载空投
@@ -628,21 +628,23 @@ def main():
                 #枪械绘制
                 if player_hp > 0:
                     if not sniper_mode:
-                        static_item(weapon1[1],player_x,player_y+55-10*p_idx)
+                        static_item(weapon1[2],player_x,player_y+55-10*p_idx)
                     else:
                         # --- 枪械指向逻辑 ---
                         player_display_x = player_world_x + cam_x+156
                         player_display_y = player_world_y + cam_y+120-10*p_idx
                         dx = get_logic_mouse()[0] - player_display_x
+                        if dx < 44:
+                            dx = 44
                         dy = get_logic_mouse()[1] - player_display_y
                         rads = math.atan2(dy, dx) #计算鼠标与玩家中心的角度
                         final_angle = -(math.degrees(rads))
                         #pygame.draw.circle(canvas, (0, 0, 255),[player_x+156,player_y+134-10*p_idx], 5)
-                        draw_rotating_gun(canvas, weapon1[1],[player_x+156,player_y+120-10*p_idx], final_angle)
+                        draw_rotating_gun(canvas, weapon1[2],[player_x+156,player_y+120-10*p_idx], final_angle)
                         #draw_rotating_gun(canvas, weapon1[1],[player_x,player_y], final_angle)
 
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
-                pygame.mouse.set_visible(True)#狙击枪时隐藏鼠标指针
+                pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
             else:
                 pygame.mouse.set_visible(True)#暂停时显示鼠标指针
 
@@ -733,7 +735,10 @@ def main():
                 canvas.blit(location_text2, (120, 170))
                 frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
                 canvas.blit(frame_counter_text, (120, 210))
-                some_text = ui_font.render(f"openning: {drop_opening}", True, (255, 255, 0))
+                try:
+                    some_text = ui_font.render(f"dx:{dx},dy:{dy}", True, (255, 255, 0))
+                except:
+                    pass
                 canvas.blit(some_text, (120, 250))
                 if draw_btn("sub_hp", 120, 320, 150, 60 ,(60, 60, 60)):
                     player_hp -= 10
