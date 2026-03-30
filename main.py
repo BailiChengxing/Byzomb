@@ -130,7 +130,7 @@ def main():
         # 你的枪支是竖着的，所以中心点到顶端的偏移是 y 方向的
         # 我们向上偏移 (负 y)，这样红点就会出现在枪的“上端”
         # 假设你想让红点在枪顶端往下 10 像素的位置，就写 -image.get_height()/2 + 10
-        offset_y = -image.get_height() / 2 +65  
+        offset_y = -image.get_height() / 2 +60  
         center_offset = pygame.math.Vector2(0, offset_y)
         
         # --- 第二步：旋转偏移向量 ---
