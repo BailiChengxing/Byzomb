@@ -12,8 +12,6 @@ def main():
     LOGIC_W, LOGIC_H = 3200, 1800
     win_w, win_h = 1600, 900
     gun_pivot = [win_w // 2, win_h // 2]
-    
-
     screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
     canvas = pygame.Surface((LOGIC_W, LOGIC_H))
     title="变异狂潮-十周年纪念版demo"
@@ -118,10 +116,37 @@ def main():
             print(f"Error loading image: {i}")
 
 
-    def draw_rotating_gun(surface, image, pivot, angle):
+    '''def draw_rotating_gun(surface, image, pivot, angle):
         rotated_image = pygame.transform.rotate(image, angle)
         new_rect = rotated_image.get_rect(center=pivot)
-        surface.blit(rotated_image, new_rect)
+        surface.blit(rotated_image, new_rect)'''
+    
+    def draw_rotating_gun(surf, image, pos, angle):
+        """
+        pos: 旋转中心的坐标 (红点位置)
+        angle: 旋转角度
+        """
+        # --- 第一步：计算偏移量 ---
+        # 你的枪支是竖着的，所以中心点到顶端的偏移是 y 方向的
+        # 我们向上偏移 (负 y)，这样红点就会出现在枪的“上端”
+        # 假设你想让红点在枪顶端往下 10 像素的位置，就写 -image.get_height()/2 + 10
+        offset_y = -image.get_height() / 2 +65  
+        center_offset = pygame.math.Vector2(0, offset_y)
+        
+        # --- 第二步：旋转偏移向量 ---
+        # 注意：向量旋转必须和图片旋转角度一致
+        # .rotate() 在 pygame 中是顺时针旋转，所以 angle 可能需要加负号，取决于你 atan2 的算法
+        rotated_offset = center_offset.rotate(-angle) 
+        
+        # --- 第三步：旋转图像 ---
+        rotated_image = pygame.transform.rotate(image, angle)
+        rect = rotated_image.get_rect(center=pos - rotated_offset)
+        surf.blit(rotated_image, rect)
+        # 开发者模式调试
+        if developer_mode:
+            pygame.draw.circle(surf, (255, 0, 0), pos, 5)  # 旋转中心（红点）
+            # 绘制一条线连接红点和图片现在的中心点
+            pygame.draw.line(surf, (0, 255, 0), pos, rect.center, 2)
 
 
     def get_font(size):
@@ -310,6 +335,9 @@ def main():
         """
         RED = (255, 0, 0)
         px, py = pos
+        if px < player_x+PLAYER_SIZE: 
+            px = player_x+PLAYER_SIZE
+            pos = (px, py)
         # --- 1. 比例参数计算 ---
         # 我们让所有尺寸都随 size 等比例变化
         dot_radius = max(1, int(size * 0.2))      # 中心红点半径 (size的20%)
@@ -361,8 +389,6 @@ def main():
         mouse_x, mouse_y = mouse_pos
         
         # --- 枪械指向逻辑 ---
-        dx = mouse_x - gun_pivot[0]
-        dy = mouse_y - gun_pivot[1]
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -475,13 +501,13 @@ def main():
                 if keys[pygame.K_s]: player_world_y += player_speed
 
 
+            
             player_world_x = max(0, min(player_world_x, WORLD_WIDTH - PLAYER_SIZE))
             player_world_y = max(0, min(player_world_y, WORLD_HEIGHT - PLAYER_SIZE))
 
             cam_x = (LOGIC_W//2 - (player_world_x + PLAYER_SIZE//2))
             cam_y = (LOGIC_H//2 - (player_world_y + PLAYER_SIZE//2))
 
-            
 
             offset_x = cam_x % TILE_W
             offset_y = cam_y % TILE_H
@@ -604,14 +630,19 @@ def main():
                     if not sniper_mode:
                         static_item(weapon1[1],player_x,player_y+55-10*p_idx)
                     else:
-                        rads = math.atan2(dx, dy) #计算鼠标与玩家中心的角度
-                        final_angle = math.degrees(rads)-90
+                        # --- 枪械指向逻辑 ---
+                        player_display_x = player_world_x + cam_x+156
+                        player_display_y = player_world_y + cam_y+120-10*p_idx
+                        dx = get_logic_mouse()[0] - player_display_x
+                        dy = get_logic_mouse()[1] - player_display_y
+                        rads = math.atan2(dy, dx) #计算鼠标与玩家中心的角度
+                        final_angle = -(math.degrees(rads))
                         #pygame.draw.circle(canvas, (0, 0, 255),[player_x+156,player_y+134-10*p_idx], 5)
-                        draw_rotating_gun(canvas, weapon1[1],[player_x+156,player_y+134-10*p_idx], final_angle)
+                        draw_rotating_gun(canvas, weapon1[1],[player_x+156,player_y+120-10*p_idx], final_angle)
                         #draw_rotating_gun(canvas, weapon1[1],[player_x,player_y], final_angle)
 
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
-                pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
+                pygame.mouse.set_visible(True)#狙击枪时隐藏鼠标指针
             else:
                 pygame.mouse.set_visible(True)#暂停时显示鼠标指针
 
