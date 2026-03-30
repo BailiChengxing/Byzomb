@@ -116,10 +116,12 @@ def main():
             return ls
         except:
             print(f"Error loading image: {i}")
+
+
     def draw_rotating_gun(surface, image, pivot, angle):
         rotated_image = pygame.transform.rotate(image, angle)
         new_rect = rotated_image.get_rect(center=pivot)
-        surface.blit(rotated_image, [new_rect])
+        surface.blit(rotated_image, new_rect)
 
 
     def get_font(size):
@@ -606,10 +608,12 @@ def main():
                         final_angle = math.degrees(rads)-90
                         #pygame.draw.circle(canvas, (0, 0, 255),[player_x+156,player_y+134-10*p_idx], 5)
                         draw_rotating_gun(canvas, weapon1[1],[player_x+156,player_y+134-10*p_idx], final_angle)
-                if sniper_mode and show2==False:
-                    pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
-                else:
-                    pygame.mouse.set_visible(True)#暂停时显示鼠标指针
+                        #draw_rotating_gun(canvas, weapon1[1],[player_x,player_y], final_angle)
+
+            if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
+                pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
+            else:
+                pygame.mouse.set_visible(True)#暂停时显示鼠标指针
 
             move_item(fence,0,2190) #下围栏
             move_item(tree1,-830,-630) #左树
@@ -622,7 +626,7 @@ def main():
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
-            if sniper_mode and show2==False:#绘制瞄准镜
+            if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:#绘制瞄准镜
                 draw_aim_scope(canvas, get_logic_mouse())
 
             if show_num<1000:
