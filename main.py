@@ -29,7 +29,7 @@ def main():
     is_fullscreen = False #全屏状态
     sniper_mode = True #是否开启狙击枪模式
 
-    score = 99345 #分数
+    score = 0 #分数
     score_x ,score_y = 2800,10 #分数显示位置
     current_mag = 120 #当前弹匣子弹数量
     reserve_ammo = 450 #当前备用弹药数量
@@ -39,6 +39,7 @@ def main():
     c_weapon = 1 #主武器
     v_weapon = 2 #副武器
     rec_status = False #是否在更换弹药中
+
 
 
     if os.name == 'nt': # 只在 Windows 生效
@@ -145,7 +146,14 @@ def main():
             final_img = pygame.transform.flip(rotated_img, True, False)
             ls.append(final_img)
         return ls
-
+    
+    def de_alpha(img_ls, alpha):#调整图片透明度
+        ls=[]
+        for i in img_ls:
+            i.set_alpha(alpha)
+            ls.append(i)
+        return ls
+    
     '''def draw_rotating_gun(surface, image, pivot, angle):
         rotated_image = pygame.transform.rotate(image, angle)
         new_rect = rotated_image.get_rect(center=pivot)
@@ -246,6 +254,7 @@ def main():
     tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
+    zombie_effect=load_ls(file=["codemao/effect/1.png","codemao/effect/2.png","codemao/effect/3.png","codemao/effect/4.png"],x=100) #僵尸特效
     weapon1=load_ls(file=["codemao/weapon/empty.png",
                           "codemao/weapon/mondragon.png",
                           "codemao/weapon/AWN.png",
