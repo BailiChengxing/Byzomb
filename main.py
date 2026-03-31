@@ -28,7 +28,7 @@ def main():
     drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔30-40秒
     current_time = pygame.time.get_ticks()
     developer_show = ()
-    sniper_mode = True #是否开启狙击枪模式
+    sniper_mode = False #是否开启狙击枪模式
     if os.name == 'nt': # 只在 Windows 生效
         import ctypes
         # 获取当前窗口句柄并禁用输入法
@@ -78,8 +78,8 @@ def main():
         surface.blit(highlight_surf, (x, y))
 
     def open_bar(surface, x, y, current_hp, max_hp):
-        bar_width = 230    # 血条总长度（像素）
-        bar_height = 22    # 血条高度
+        bar_width = 230
+        bar_height = 22
         ratio = max(0, min(current_hp / max_hp, 1))
         pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
         color = (89, 212, 205)
@@ -89,6 +89,17 @@ def main():
         highlight_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
         highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
         surface.blit(highlight_surf, (x, y))
+
+    def rec_bar(surface, x, y, current_time, max_time):
+        bar_width = 15
+        bar_height = 120   
+        # 限制比例在 0 到 1 之间
+        ratio = max(0, min(current_time / max_time, 1))
+        current_bar_h = int(bar_height * ratio)
+        pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
+        pygame.draw.rect(surface, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
+        pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+
 
     def load_ls(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
@@ -115,6 +126,13 @@ def main():
         except:
             print(f"Error loading image: {i}")
 
+    def vice_weapon(img_ls):#副武器图片处理，旋转90度并水平翻转
+        ls=[]
+        for i in img_ls:
+            rotated_img = pygame.transform.rotate(i, -90)
+            final_img = pygame.transform.flip(rotated_img, True, False)
+            ls.append(final_img)
+        return ls
 
     '''def draw_rotating_gun(surface, image, pivot, angle):
         rotated_image = pygame.transform.rotate(image, angle)
@@ -219,13 +237,14 @@ def main():
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
     weapon1=load_ls(file=["codemao/weapon/empty.png","codemao/weapon/mondragon.png","codemao/weapon/Barrett.png"],x=320) #武器1
-    weapon2=weapon1
+    weapon2=vice_weapon(weapon1)
     grave=load(file="codemao/grave.png",y=230) #墓碑
     #加载空投
     drop1=load(file="codemao/drop1.png",y=660)
     drop2=load(file="codemao/drop2.png",y=660)
 
     num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
+    num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
     show_num = 299 #测试用数字
 
     def move_item(img,x,y):#定义动类型物品绘制
@@ -627,8 +646,9 @@ def main():
                     canvas.blit(player_frames[p_idx], (player_x, player_y))
                 #枪械绘制
                 if player_hp > 0:
-                    if not sniper_mode:
-                        static_item(weapon1[2],player_x,player_y+55-10*p_idx)
+                    static_item(weapon2[2],player_x-48,player_y-50-10*p_idx)#副武器
+                    if not sniper_mode:#主武器
+                        static_item(weapon1[1],player_x,player_y+55-10*p_idx)
                     else:
                         # --- 枪械指向逻辑 ---
                         player_display_x = player_world_x + cam_x+156
@@ -640,7 +660,7 @@ def main():
                         rads = math.atan2(dy, dx) #计算鼠标与玩家中心的角度
                         final_angle = -(math.degrees(rads))
                         #pygame.draw.circle(canvas, (0, 0, 255),[player_x+156,player_y+134-10*p_idx], 5)
-                        draw_rotating_gun(canvas, weapon1[2],[player_x+156,player_y+120-10*p_idx], final_angle)
+                        draw_rotating_gun(canvas, weapon1[1],[player_x+156,player_y+120-10*p_idx], final_angle)
                         #draw_rotating_gun(canvas, weapon1[1],[player_x,player_y], final_angle)
 
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
@@ -669,20 +689,22 @@ def main():
                     static_item(num_img[(show_num//10)%10], 130, 10) 
                 static_item(num_img[show_num%10], 190, 10) 
 
+                rec_bar(canvas, 30, 5, 20, 50) #换弹进度条
+
                 if show_num >= 100:#显示副弹夹
-                    static_item(num_img[show_num//100], 270, 10) 
+                    static_item(num_img2[show_num//100], 290, 35) 
                 elif 100>show_num >= 10:
-                    static_item(num_img[(show_num//10)%10], 270, 10) 
+                    static_item(num_img2[(show_num//10)%10], 290, 35) 
                 else:
-                    static_item(num_img[show_num%10], 270, 10) 
+                    static_item(num_img2[show_num%10], 290, 35) 
                 if show_num >= 100:
-                    static_item(num_img[(show_num//10)%10], 330, 10) 
+                    static_item(num_img2[(show_num//10)%10], 330, 35) 
                 elif 100>show_num >= 10:
-                    static_item(num_img[show_num%10], 330, 10)
+                    static_item(num_img2[show_num%10], 330, 35)
                 else:
                     pass
                 if show_num >= 100:
-                    static_item(num_img[show_num%10], 390, 10)
+                    static_item(num_img2[show_num%10], 370, 35)
 
 
             #暂停菜单
@@ -736,7 +758,7 @@ def main():
                 frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
                 canvas.blit(frame_counter_text, (120, 210))
                 try:
-                    some_text = ui_font.render(f"dx:{dx},dy:{dy}", True, (255, 255, 0))
+                    some_text = ui_font.render(f"{weapon1}", True, (255, 255, 0))
                 except:
                     pass
                 canvas.blit(some_text, (120, 250))
