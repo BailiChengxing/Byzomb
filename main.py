@@ -227,8 +227,6 @@ def main():
     mute_t_hover = load(file="codemao/UI/mute4.png",x=180)
     pause_page = load(file="codemao/UI/pause_page.png",x=1700)
 
-    rec=load(file="codemao/UI/rec.png",x=190) #换弹药
-
     #加载围栏
     fence=load(file="codemao/Fence.png",x=move_x) #围栏
     #加载树林
@@ -245,6 +243,7 @@ def main():
 
     num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
+    num_img0=load(file="codemao/num0/9.png",x=120) #数字0图片
     show_num = 299 #测试用数字
 
     def move_item(img,x,y):#定义动类型物品绘制
@@ -707,6 +706,10 @@ def main():
                     static_item(num_img2[show_num%10], 370, 35)
 
 
+            #----得分显示----
+            static_item(num_img0, 1200, 80)
+
+
             #暂停菜单
             if show2:
                 rect = img.get_rect()
@@ -792,7 +795,8 @@ def main():
                 if final_x == None and final_y == None:
                     final_x , final_y = player_world_x, player_world_y
                 move_item(player_frames[0],final_x,final_y)
-                move_item(weapon1[0],final_x,final_y+55)
+                move_item(weapon1[1],final_x,final_y+55)
+                move_item(weapon2[2],final_x-48,final_y-55)
                 if cam_x < 1500:
                     game_over_sound.play()
                     player_world_x -= 30
