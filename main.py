@@ -11,7 +11,6 @@ def main():
     pygame.mixer.init()
     LOGIC_W, LOGIC_H = 3200, 1800
     win_w, win_h = 1600, 900
-    gun_pivot = [win_w // 2, win_h // 2]
     screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
     canvas = pygame.Surface((LOGIC_W, LOGIC_H))
     title="变异狂潮-十周年纪念版demo"
@@ -27,8 +26,21 @@ def main():
     drop_x,drop_y = random.randint(400,4800),random.randint(-200,1500)
     drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔30-40秒
     current_time = pygame.time.get_ticks()
-    developer_show = ()
-    sniper_mode = False #是否开启狙击枪模式
+    is_fullscreen = False #全屏状态
+    sniper_mode = True #是否开启狙击枪模式
+
+    score = 99345 #分数
+    score_x ,score_y = 2800,10 #分数显示位置
+    current_mag = 120 #当前弹匣子弹数量
+    reserve_ammo = 450 #当前备用弹药数量
+    current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
+    reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
+    developer_x ,developer_y = 60,150 #开发者模式信息显示位置
+    c_weapon = 1 #主武器
+    v_weapon = 2 #副武器
+    rec_status = False #是否在更换弹药中
+
+
     if os.name == 'nt': # 只在 Windows 生效
         import ctypes
         # 获取当前窗口句柄并禁用输入法
@@ -234,7 +246,11 @@ def main():
     tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
-    weapon1=load_ls(file=["codemao/weapon/empty.png","codemao/weapon/mondragon.png","codemao/weapon/Barrett.png"],x=320) #武器1
+    weapon1=load_ls(file=["codemao/weapon/empty.png",
+                          "codemao/weapon/mondragon.png",
+                          "codemao/weapon/AWN.png",
+                          "codemao/weapon/Barrett.png"
+                          ],x=320) #武器1
     weapon2=vice_weapon(weapon1)
     grave=load(file="codemao/grave.png",y=230) #墓碑
     #加载空投
@@ -243,8 +259,7 @@ def main():
 
     num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
-    num_img0=load(file="codemao/num0/9.png",x=120) #数字0图片
-    show_num = 299 #测试用数字
+    num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=70) #数字图片列表
 
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -425,9 +440,18 @@ def main():
                             total_paused_time += (pygame.time.get_ticks() - start_pause_time)
                     if event.key == pygame.K_F3: #开发者模式开关
                         developer_mode = not developer_mode
+                    if event.key == pygame.K_F11: #全屏开关
+                        is_fullscreen = not is_fullscreen  # 切换布尔值
+                        if is_fullscreen:
+                            screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                        else:
+                            screen =pygame.display.set_mode((1600, 900), pygame.RESIZABLE)
                     if show2 == False:
                         if event.key == pygame.K_r: #换弹
                             add_hp+=5
+                        if event.key == pygame.K_q: #换武器
+                            if rec_status == False:
+                                c_weapon, v_weapon = v_weapon, c_weapon
 
         canvas.fill((0, 0, 0))
 
@@ -645,9 +669,9 @@ def main():
                     canvas.blit(player_frames[p_idx], (player_x, player_y))
                 #枪械绘制
                 if player_hp > 0:
-                    static_item(weapon2[2],player_x-48,player_y-50-10*p_idx)#副武器
+                    static_item(weapon2[v_weapon],player_x-48,player_y-50-10*p_idx)#副武器
                     if not sniper_mode:#主武器
-                        static_item(weapon1[1],player_x,player_y+55-10*p_idx)
+                        static_item(weapon1[c_weapon],player_x,player_y+55-10*p_idx)
                     else:
                         # --- 枪械指向逻辑 ---
                         player_display_x = player_world_x + cam_x+156
@@ -658,9 +682,7 @@ def main():
                         dy = get_logic_mouse()[1] - player_display_y
                         rads = math.atan2(dy, dx) #计算鼠标与玩家中心的角度
                         final_angle = -(math.degrees(rads))
-                        #pygame.draw.circle(canvas, (0, 0, 255),[player_x+156,player_y+134-10*p_idx], 5)
-                        draw_rotating_gun(canvas, weapon1[1],[player_x+156,player_y+120-10*p_idx], final_angle)
-                        #draw_rotating_gun(canvas, weapon1[1],[player_x,player_y], final_angle)
+                        draw_rotating_gun(canvas, weapon1[c_weapon],[player_x+156,player_y+120-10*p_idx], final_angle)
 
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
                 pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
@@ -681,33 +703,50 @@ def main():
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:#绘制瞄准镜
                 draw_aim_scope(canvas, get_logic_mouse())
 
-            if show_num<1000:
-                if show_num >= 100:#显示主弹夹
-                    static_item(num_img[show_num//100], 70, 10) 
-                if show_num >= 10:
-                    static_item(num_img[(show_num//10)%10], 130, 10) 
-                static_item(num_img[show_num%10], 190, 10) 
+            #----弹药显示----
+            if current_mag<1000:
+                if current_mag >= 100:#显示主弹夹
+                    static_item(num_img[current_mag//100], current_mag_x, current_mag_y) 
+                if current_mag >= 10:
+                    static_item(num_img[(current_mag//10)%10], current_mag_x + 60, current_mag_y) 
+                static_item(num_img[current_mag%10], current_mag_x + 120, current_mag_y) 
 
                 rec_bar(canvas, 30, 5, 20, 50) #换弹进度条
 
-                if show_num >= 100:#显示副弹夹
-                    static_item(num_img2[show_num//100], 290, 35) 
-                elif 100>show_num >= 10:
-                    static_item(num_img2[(show_num//10)%10], 290, 35) 
+                if reserve_ammo >= 100:#显示副弹夹
+                    static_item(num_img2[reserve_ammo//100], reserve_ammo_x, reserve_ammo_y) 
+                elif 100>reserve_ammo >= 10:
+                    static_item(num_img2[(reserve_ammo//10)%10], reserve_ammo_x, reserve_ammo_y) 
                 else:
-                    static_item(num_img2[show_num%10], 290, 35) 
-                if show_num >= 100:
-                    static_item(num_img2[(show_num//10)%10], 330, 35) 
-                elif 100>show_num >= 10:
-                    static_item(num_img2[show_num%10], 330, 35)
+                    static_item(num_img2[reserve_ammo%10], reserve_ammo_x, reserve_ammo_y) 
+                if reserve_ammo >= 100:
+                    static_item(num_img2[(reserve_ammo//10)%10], reserve_ammo_x + 45, reserve_ammo_y) 
+                elif 100>reserve_ammo >= 10:
+                    static_item(num_img2[reserve_ammo%10], reserve_ammo_x + 45, reserve_ammo_y)
                 else:
                     pass
-                if show_num >= 100:
-                    static_item(num_img2[show_num%10], 370, 35)
+                if reserve_ammo >= 100:
+                    static_item(num_img2[reserve_ammo%10], reserve_ammo_x + 90, reserve_ammo_y)
 
 
             #----得分显示----
-            static_item(num_img0, 1200, 80)
+            if score < 100000:
+                if score >=10000:
+                    static_item(num_img0[score//10000], score_x, score_y)
+                if score >=1000:
+                    static_item(num_img0[(score//1000)%10], score_x + 60, score_y)
+                if score >=100:
+                    static_item(num_img0[(score//100)%10], score_x + 120, score_y)
+                if score >=10:
+                    static_item(num_img0[(score//10)%10], score_x + 180, score_y)
+                static_item(num_img0[score%10], score_x + 240, score_y)
+            else:
+                static_item(num_img0[9], score_x, score_y)
+                static_item(num_img0[9], score_x + 60, score_y)
+                static_item(num_img0[9], score_x + 120, score_y)
+                static_item(num_img0[9], score_x + 180, score_y)
+                static_item(num_img0[9], score_x + 240, score_y)
+            
 
 
             #暂停菜单
@@ -750,30 +789,35 @@ def main():
                 fps = int(clock.get_fps())
                 fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
                 current_time_text = ui_font.render(f"Time: {current_time//1000}s", True, (255, 255, 0))
-                canvas.blit(fps_text, (120, 10))
-                canvas.blit(current_time_text, (120, 50))
                 health_text = ui_font.render(f"HP: {player_hp}", True, (255, 255, 0))
-                canvas.blit(health_text, (120, 90))
                 location_text = ui_font.render(f"cam_x: {cam_x}, cam_y: {cam_y}", True, (255, 255, 0))
-                canvas.blit(location_text, (120, 130))
                 location_text2 = ui_font.render(f"player_world_x: {player_world_x}, player_world_y: {player_world_y}", True, (255, 255, 0))
-                canvas.blit(location_text2, (120, 170))
                 frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
-                canvas.blit(frame_counter_text, (120, 210))
-                try:
-                    some_text = ui_font.render(f"{weapon1}", True, (255, 255, 0))
-                except:
-                    pass
-                canvas.blit(some_text, (120, 250))
-                if draw_btn("sub_hp", 120, 320, 150, 60 ,(60, 60, 60)):
+                wall_hp_text = ui_font.render(f"Wall HP: {wall_hp}", True, (255, 255, 0))
+                develop_show_list=[
+                    fps_text,
+                    current_time_text,
+                    health_text,
+                    wall_hp_text,
+                    location_text,
+                    location_text2,
+                    frame_counter_text
+                ]
+                for i, text in enumerate(develop_show_list):
+                    canvas.blit(text, (developer_x, developer_y + i*40))
+                    final_developer_y = developer_y + i*40
+                if draw_btn("-player_hp", developer_x, final_developer_y+70, 150, 60 ,(60, 60, 60)):
                     player_hp -= 10
-                if draw_btn("sub_wall_hp", 120, 390, 150, 60 ,(60, 60, 60)):
+                if draw_btn("-wall_hp", developer_x, final_developer_y+140, 150, 60 ,(60, 60, 60)):
                     wall_hp -= 10
                 game_over_sound
-                if draw_btn("结束", LOGIC_W - 180, 30, 150, 60, (60, 60, 60)):
+                if draw_btn("结束", developer_x, final_developer_y+210, 150, 60, (60, 60, 60)):
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
                     pygame.time.delay(200)
+                if draw_btn("add_score", developer_x, final_developer_y+280, 150, 60, (60, 60, 60)):
+                    score +=1
+
             
             if player_hp <= 0:#玩家死亡
                 game_over_sound.play()
@@ -816,8 +860,7 @@ def main():
             res_msg = title_font.render("得分：", True, (211,211,211))
             title_font.set_bold(True)
             canvas.blit(res_msg, res_msg.get_rect(center=(LOGIC_W//2+30, LOGIC_H//3)))
-
-            score_msg = score_font.render("0", True, (211,211,211))
+            score_msg = score_font.render(str(score), True, (211,211,211))
             score_font.set_bold(True)
             canvas.blit(score_msg, score_msg.get_rect(center=(LOGIC_W//2, LOGIC_H//3+320)))
             '''if draw_btn("返回菜单", LOGIC_W//2-150, LOGIC_H//2, 300, 80, (50, 150, 255)):
