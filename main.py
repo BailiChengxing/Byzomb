@@ -268,7 +268,7 @@ def main():
 
     num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
-    num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=70) #数字图片列表
+    num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
 
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
@@ -513,6 +513,21 @@ def main():
                 drop_opening = 0 #开箱动画计时
                 drop_status = False #是否可开箱
                 draw_open_bar= False
+
+                score = 0 #分数
+                score_x ,score_y = 2800,10 #分数显示位置
+                current_mag = 120 #当前弹匣子弹数量
+                reserve_ammo = 450 #当前备用弹药数量
+                current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
+                reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
+                developer_x ,developer_y = 60,150 #开发者模式信息显示位置
+                c_weapon = 1 #主武器
+                v_weapon = 2 #副武器
+                rec_status = False #是否在更换弹药中
+                drop_list=[]#掉落物列表
+
+
+
                 reload_data = {#弹药系统预留
                     "is_reloading": False,
                     "start_time": 0,
@@ -588,6 +603,8 @@ def main():
                     if drop_opening >= 100:
                         drop_status = False
                         draw_open_bar = False
+                        drop_list.append({"type":random.randint(1, len(weapon1)-1),"x":drop_x,"y":t_drop_y})
+                        #move_item(weapon1[random.randint(0, len(weapon1)-1)], drop_x, t_drop_y-50)
                 elif  not player_rect.colliderect(drop_rect) and drop_status ==True:
                     draw_open_bar = False
                     drop_opening = 0
@@ -624,6 +641,20 @@ def main():
                     move_item(drop2, drop_x, t_drop_y)
                     drop_status=True
                     drop_rect=draw_drop_rect()
+
+
+            #掉落物绘制
+            if drop_list:
+                for drop in drop_list[:]:
+                    pygame.draw.ellipse(canvas, (45,29,36), [cam_x+drop["x"]+123, cam_y+drop["y"]+502, 260, 50], width=0)
+                    move_item(weapon1[drop["type"]], drop["x"]+90, drop["y"]+420)
+                    drop_rect = pygame.Rect(drop["x"]+180, drop["y"]+450, 140, 68)
+                    if player_rect.colliderect(drop_rect):
+                        pick_text = ui_font.render(f"按下F拾取", True, (221, 221, 221))
+                        canvas.blit(pick_text, (player_x+36, player_y+180))
+                        if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
+                            c_weapon = drop["type"]
+                            drop_list.remove(drop)
 
 
 
@@ -743,18 +774,18 @@ def main():
                 if score >=10000:
                     static_item(num_img0[score//10000], score_x, score_y)
                 if score >=1000:
-                    static_item(num_img0[(score//1000)%10], score_x + 60, score_y)
+                    static_item(num_img0[(score//1000)%10], score_x + 50, score_y)
                 if score >=100:
-                    static_item(num_img0[(score//100)%10], score_x + 120, score_y)
+                    static_item(num_img0[(score//100)%10], score_x + 100, score_y)
                 if score >=10:
-                    static_item(num_img0[(score//10)%10], score_x + 180, score_y)
-                static_item(num_img0[score%10], score_x + 240, score_y)
+                    static_item(num_img0[(score//10)%10], score_x + 150, score_y)
+                static_item(num_img0[score%10], score_x + 200, score_y)
             else:
                 static_item(num_img0[9], score_x, score_y)
-                static_item(num_img0[9], score_x + 60, score_y)
-                static_item(num_img0[9], score_x + 120, score_y)
-                static_item(num_img0[9], score_x + 180, score_y)
-                static_item(num_img0[9], score_x + 240, score_y)
+                static_item(num_img0[9], score_x + 50, score_y)
+                static_item(num_img0[9], score_x + 100, score_y)
+                static_item(num_img0[9], score_x + 150, score_y)
+                static_item(num_img0[9], score_x + 200, score_y)
             
 
 
