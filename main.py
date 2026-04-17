@@ -147,12 +147,6 @@ def main():
             ls.append(final_img)
         return ls
     
-    def de_alpha(img_ls, alpha):#调整图片透明度
-        ls=[]
-        for i in img_ls:
-            i.set_alpha(alpha)
-            ls.append(i)
-        return ls
     
     '''def draw_rotating_gun(surface, image, pivot, angle):
         rotated_image = pygame.transform.rotate(image, angle)
@@ -601,10 +595,9 @@ def main():
                     draw_open_bar = True
                     #open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
                     if drop_opening >= 100:
+                        drop_list.append({"type":random.randint(2, len(weapon1)-1),"x":drop_x,"y":t_drop_y})
                         drop_status = False
                         draw_open_bar = False
-                        drop_list.append({"type":random.randint(1, len(weapon1)-1),"x":drop_x,"y":t_drop_y})
-                        #move_item(weapon1[random.randint(0, len(weapon1)-1)], drop_x, t_drop_y-50)
                 elif  not player_rect.colliderect(drop_rect) and drop_status ==True:
                     draw_open_bar = False
                     drop_opening = 0
@@ -648,13 +641,15 @@ def main():
                 for drop in drop_list[:]:
                     pygame.draw.ellipse(canvas, (45,29,36), [cam_x+drop["x"]+123, cam_y+drop["y"]+502, 260, 50], width=0)
                     move_item(weapon1[drop["type"]], drop["x"]+90, drop["y"]+420)
-                    drop_rect = pygame.Rect(drop["x"]+180, drop["y"]+450, 140, 68)
-                    if player_rect.colliderect(drop_rect):
+                    drop_item_rect = pygame.Rect(drop["x"]+180, drop["y"]+450, 140, 68)
+                    if player_rect.colliderect(drop_item_rect):
                         pick_text = ui_font.render(f"按下F拾取", True, (221, 221, 221))
                         canvas.blit(pick_text, (player_x+36, player_y+180))
                         if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
-                            c_weapon = drop["type"]
-                            drop_list.remove(drop)
+                            if rec_status == False:
+                                c_weapon = drop["type"]
+                                drop_list.remove(drop)
+
 
 
 
@@ -824,7 +819,7 @@ def main():
                         mute = False
 
 
-
+            #开发者模式
             if developer_mode:
                 fps = int(clock.get_fps())
                 fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
