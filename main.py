@@ -264,6 +264,9 @@ def main():
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
     num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
 
+    item1=load(file="codemao/items/icons/boom-1.png",x=160) #物品1
+    item2=load(file="codemao/items/icons/kit-1.png",x=160) #物品2
+
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
         item_draw_y = y + cam_y
@@ -507,6 +510,7 @@ def main():
                 drop_opening = 0 #开箱动画计时
                 drop_status = False #是否可开箱
                 draw_open_bar= False
+                bag=0
 
                 score = 0 #分数
                 score_x ,score_y = 2800,10 #分数显示位置
@@ -643,7 +647,7 @@ def main():
                     move_item(weapon1[drop["type"]], drop["x"]+90, drop["y"]+420)
                     drop_item_rect = pygame.Rect(drop["x"]+180, drop["y"]+450, 140, 68)
                     if player_rect.colliderect(drop_item_rect):
-                        pick_text = ui_font.render(f"按下F拾取", True, (221, 221, 221))
+                        pick_text = ui_font.render(f"按下F拾取", True, (0, 49, 207))
                         canvas.blit(pick_text, (player_x+36, player_y+180))
                         if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
@@ -737,6 +741,10 @@ def main():
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:#绘制瞄准镜
                 draw_aim_scope(canvas, get_logic_mouse())
+
+            #----背包显示----
+            static_item(item1, 10, 300) #物品图标
+            static_item(item2, 10, 480) #物品图标
 
             #----弹药显示----
             if current_mag<1000:
