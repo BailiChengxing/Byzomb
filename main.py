@@ -26,6 +26,7 @@ def main():
     drop_x,drop_y = random.randint(400,4800),random.randint(-200,1500)
     drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔30-40秒
     current_time = pygame.time.get_ticks()
+    bag_status = True #背包状态
     is_fullscreen = False #全屏状态
     sniper_mode = True #是否开启狙击枪模式
 
@@ -264,7 +265,7 @@ def main():
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
     num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
 
-    item1=load(file="codemao/items/icons/boom-0.png",x=160) #物品1
+    item1=load(file="codemao/items/icons/boom-1.png",x=160) #物品1
     item2=load(file="codemao/items/icons/kit-1.png",x=160) #物品2
 
     def move_item(img,x,y):#定义动类型物品绘制
@@ -446,8 +447,11 @@ def main():
                             total_paused_time += (pygame.time.get_ticks() - start_pause_time)
                     if event.key == pygame.K_F3: #开发者模式开关
                         developer_mode = not developer_mode
+                    if event.key == pygame.K_e: #背包开关
+                        bag_status = not bag_status
                     if event.key == pygame.K_F11: #全屏开关
-                        is_fullscreen = not is_fullscreen  # 切换布尔值
+                        pass
+                        #is_fullscreen = not is_fullscreen  # 切换布尔值
                         if is_fullscreen:
                             screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
                         else:
@@ -511,6 +515,7 @@ def main():
                 drop_status = False #是否可开箱
                 draw_open_bar= False
                 bag=0
+                bag_status=True
 
                 score = 0 #分数
                 score_x ,score_y = 2800,10 #分数显示位置
@@ -744,8 +749,9 @@ def main():
 
             #----背包显示----
             if wall_hp > 0 and player_hp > 0:
-                static_item(item1, 10, 300) #物品图标
-                static_item(item2, 10, 480) #物品图标
+                if bag_status:
+                    static_item(item1, 10, 300) #物品图标
+                    static_item(item2, 10, 480) #物品图标
 
             #----弹药显示----
             if current_mag<1000:
