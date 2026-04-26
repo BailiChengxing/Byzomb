@@ -264,7 +264,7 @@ def main():
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
     num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
 
-    item1=load(file="codemao/items/icons/boom-1.png",x=160) #物品1
+    item1=load(file="codemao/items/icons/boom-0.png",x=160) #物品1
     item2=load(file="codemao/items/icons/kit-1.png",x=160) #物品2
 
     def move_item(img,x,y):#定义动类型物品绘制
@@ -743,8 +743,9 @@ def main():
                 draw_aim_scope(canvas, get_logic_mouse())
 
             #----背包显示----
-            static_item(item1, 10, 300) #物品图标
-            static_item(item2, 10, 480) #物品图标
+            if wall_hp > 0 and player_hp > 0:
+                static_item(item1, 10, 300) #物品图标
+                static_item(item2, 10, 480) #物品图标
 
             #----弹药显示----
             if current_mag<1000:
