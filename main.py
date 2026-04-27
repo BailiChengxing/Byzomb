@@ -37,8 +37,9 @@ def main():
     current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
     reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
     developer_x ,developer_y = 60,150 #开发者模式信息显示位置
-    c_weapon = 1 #主武器
-    v_weapon = 2 #副武器
+    main_weapon="mondragon" #当前主武器
+    vice_weapon="empty" #当前副武器
+
     rec_status = False #是否在更换弹药中
 
 
@@ -48,7 +49,6 @@ def main():
         # 获取当前窗口句柄并禁用输入法
         hwnd = pygame.display.get_wm_info()['window']
         ctypes.windll.imm32.ImmAssociateContext(hwnd, None)
-
 
 
     def load(file,x=None,y=None):#加载图片并根据参数调整大小
@@ -139,14 +139,30 @@ def main():
             return ls
         except:
             print(f"Error loading image: {i}")
-
-    def vice_weapon(img_ls):#副武器图片处理，旋转90度并水平翻转
-        ls=[]
-        for i in img_ls:
-            rotated_img = pygame.transform.rotate(i, -90)
+            
+    def load_main_weapon(**files):
+        """
+        批量加载武器图片
+        :param files: 格式为 name="path" 的参数
+        :return: 包含 {名称: pygame图片对象} 的字典
+        """
+        weapon_assets = {}
+        for name, path in files.items():
+            try:
+                img = pygame.image.load(path).convert_alpha()
+                img = pygame.transform.scale(img, (320, 145))
+                weapon_assets[name] = img
+            except pygame.error as e:
+                print(f"error to load img{path}: {e}")
+        return weapon_assets
+    
+    def load_vice_weapons(weapon_dict):
+        vice_assets = {}
+        for name, img in weapon_dict.items():
+            rotated_img = pygame.transform.rotate(img, -90)
             final_img = pygame.transform.flip(rotated_img, True, False)
-            ls.append(final_img)
-        return ls
+            vice_assets[name] = final_img
+        return vice_assets
     
     
     '''def draw_rotating_gun(surface, image, pivot, angle):
@@ -250,12 +266,14 @@ def main():
     wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
     zombie_effect=load_ls(file=["codemao/effect/1.png","codemao/effect/2.png","codemao/effect/3.png","codemao/effect/4.png"],x=100) #僵尸特效
-    weapon1=load_ls(file=["codemao/weapon/empty.png",
-                          "codemao/weapon/mondragon.png",
-                          "codemao/weapon/AWN.png",
-                          "codemao/weapon/Barrett.png"
-                          ],x=320) #武器1
-    weapon2=vice_weapon(weapon1)
+
+    main_weapon_img=load_main_weapon(empty="codemao/weapon/empty.png",
+                                 mondragon="codemao/weapon/mondragon.png",
+                                 AK47="codemao/weapon/AK47.png",
+                                 M249="codemao/weapon/M249.png",
+                                    AWN="codemao/weapon/AWN.png") #主武器字典
+    vice_weapon_img=load_vice_weapons(main_weapon_img) #副武器字典
+    weapon_list=list(main_weapon_img) #主武器列表
     grave=load(file="codemao/grave.png",y=230) #墓碑
     #加载空投
     drop1=load(file="codemao/drop1.png",y=660)
@@ -461,7 +479,7 @@ def main():
                             add_hp+=5
                         if event.key == pygame.K_q: #换武器
                             if rec_status == False:
-                                c_weapon, v_weapon = v_weapon, c_weapon
+                                main_weapon, vice_weapon = vice_weapon, main_weapon
 
         canvas.fill((0, 0, 0))
 
@@ -524,8 +542,8 @@ def main():
                 current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
                 reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
                 developer_x ,developer_y = 60,150 #开发者模式信息显示位置
-                c_weapon = 1 #主武器
-                v_weapon = 2 #副武器
+                main_weapon="mondragon" #当前主武器
+                vice_weapon="empty" #当前副武器
                 rec_status = False #是否在更换弹药中
                 drop_list=[]#掉落物列表
 
@@ -604,7 +622,7 @@ def main():
                     draw_open_bar = True
                     #open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
                     if drop_opening >= 100:
-                        drop_list.append({"type":random.randint(2, len(weapon1)-1),"x":drop_x,"y":t_drop_y})
+                        drop_list.append({"type":weapon_list[random.randint(2, len(weapon_list)-1)],"x":drop_x,"y":t_drop_y})
                         drop_status = False
                         draw_open_bar = False
                 elif  not player_rect.colliderect(drop_rect) and drop_status ==True:
@@ -649,14 +667,18 @@ def main():
             if drop_list:
                 for drop in drop_list[:]:
                     pygame.draw.ellipse(canvas, (45,29,36), [cam_x+drop["x"]+123, cam_y+drop["y"]+502, 260, 50], width=0)
-                    move_item(weapon1[drop["type"]], drop["x"]+90, drop["y"]+420)
+                    #move_item(weapon_list[drop["type"]], drop["x"]+90, drop["y"]+420)
+                    move_item(main_weapon_img[drop["type"]], drop["x"]+90, drop["y"]+420)
                     drop_item_rect = pygame.Rect(drop["x"]+180, drop["y"]+450, 140, 68)
                     if player_rect.colliderect(drop_item_rect):
-                        pick_text = ui_font.render(f"按下F拾取", True, (0, 49, 207))
-                        canvas.blit(pick_text, (player_x+36, player_y+180))
+                        pick_text = ui_font.render(f"按下F拾取{drop['type']}", True, (0, 49, 207))
+                        canvas.blit(pick_text, (player_x-20, player_y+240))
                         if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
-                                c_weapon = drop["type"]
+                                if vice_weapon == "empty":
+                                    vice_weapon = drop["type"]
+                                else:
+                                    main_weapon = drop["type"]
                                 drop_list.remove(drop)
 
 
@@ -713,9 +735,9 @@ def main():
                     canvas.blit(player_frames[p_idx], (player_x, player_y))
                 #枪械绘制
                 if player_hp > 0:
-                    static_item(weapon2[v_weapon],player_x-48,player_y-50-10*p_idx)#副武器
+                    static_item(vice_weapon_img[vice_weapon],player_x-48,player_y-50-10*p_idx)#副武器
                     if not sniper_mode:#主武器
-                        static_item(weapon1[c_weapon],player_x,player_y+55-10*p_idx)
+                        static_item(main_weapon_img[main_weapon],player_x,player_y+55-10*p_idx)
                     else:
                         # --- 枪械指向逻辑 ---
                         player_display_x = player_world_x + cam_x+156
@@ -726,7 +748,7 @@ def main():
                         dy = get_logic_mouse()[1] - player_display_y
                         rads = math.atan2(dy, dx) #计算鼠标与玩家中心的角度
                         final_angle = -(math.degrees(rads))
-                        draw_rotating_gun(canvas, weapon1[c_weapon],[player_x+156,player_y+120-10*p_idx], final_angle)
+                        draw_rotating_gun(canvas, main_weapon_img[main_weapon],[player_x+156,player_y+120-10*p_idx], final_angle)
 
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
                 pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
@@ -889,8 +911,8 @@ def main():
                 if final_x == None and final_y == None:
                     final_x , final_y = player_world_x, player_world_y
                 move_item(player_frames[0],final_x,final_y)
-                move_item(weapon1[1],final_x,final_y+55)
-                move_item(weapon2[2],final_x-48,final_y-55)
+                move_item(main_weapon_img[main_weapon],final_x,final_y+55)
+                move_item(vice_weapon_img[vice_weapon],final_x-48,final_y-55)
                 if cam_x < 1500:
                     game_over_sound.play()
                     player_world_x -= 30
