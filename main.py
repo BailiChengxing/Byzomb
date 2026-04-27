@@ -3,6 +3,7 @@ import sys
 import os
 import random
 import math
+import copy
 
 # === 1. 配置与初始化函数 ===
 def main():
@@ -267,6 +268,7 @@ def main():
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
     zombie_effect=load_ls(file=["codemao/effect/1.png","codemao/effect/2.png","codemao/effect/3.png","codemao/effect/4.png"],x=100) #僵尸特效
 
+    #——————武器加载——————
     main_weapon_img=load_main_weapon(empty="codemao/weapon/empty.png",
                                  mondragon="codemao/weapon/mondragon.png",
                                  AK47="codemao/weapon/AK47.png",
@@ -274,6 +276,72 @@ def main():
                                     AWN="codemao/weapon/AWN.png") #主武器字典
     vice_weapon_img=load_vice_weapons(main_weapon_img) #副武器字典
     weapon_list=list(main_weapon_img) #主武器列表
+    WEAPON_CONFIG = {
+        "empty": {
+            "name": "空手",
+            "damage": 0,
+            "gun_type": "empty",
+            "weight": 0,
+            "mag_capacity": 0,
+            "reserve_ammo": 0,
+        }, #空武器配置
+        "mondragon": {
+            "name": "mondragon",
+            "damage": 10,
+            "gun_type": "common",
+            "weight": 5,
+            "mag_capacity": 12,
+            "reserve_ammo": 45,
+        },
+        "AK47": {
+            "name": "AK47",
+            "damage": 8,
+            "gun_type": "rifle",
+            "weight": 4,
+            "mag_capacity": 30,
+            "reserve_ammo": 120,
+        },
+    }
+
+    class Weapon:
+        def __init__(self, name, config):
+            self.name = name
+            self.damage = config["damage"]
+            self.mag_capacity = config["mag_capacity"]
+            self.current_mag = config["mag_capacity"]
+            self.reserve_ammo = config["reserve_ammo"]
+
+        def fire(self):
+                if self.current_mag > 0:
+                    self.current_mag -= 1
+                    return True
+                return False
+        
+    class Player:
+        def __init__(self, config):
+            self.config = config
+            mondragon = Weapon("mondragon", copy.deepcopy(config["mondragon"]))
+            empty = Weapon("empty", copy.deepcopy(config["empty"]))
+            self.inventory = [mondragon, empty]
+            self.active_index = 0
+
+        def switch_weapon(self):
+            self.active_index = 1 - self.active_index
+
+        def pick_up(self, weapon_id):
+            new_data = copy.deepcopy(self.weapon_config[weapon_id])
+            new_weapon = Weapon(weapon_id, new_data)
+            if self.inventory[1-self.active_index].name == "empty":
+                self.inventory[1-self.active_index] = new_weapon
+            else:
+                self.inventory[self.active_index] = new_weapon
+
+        @property
+        def current_weapon(self):
+            return self.inventory[self.active_index]
+
+
+
     grave=load(file="codemao/grave.png",y=230) #墓碑
     #加载空投
     drop1=load(file="codemao/drop1.png",y=660)
@@ -480,6 +548,7 @@ def main():
                         if event.key == pygame.K_q: #换武器
                             if rec_status == False:
                                 main_weapon, vice_weapon = vice_weapon, main_weapon
+                                player.switch_weapon()
 
         canvas.fill((0, 0, 0))
 
@@ -546,6 +615,8 @@ def main():
                 vice_weapon="empty" #当前副武器
                 rec_status = False #是否在更换弹药中
                 drop_list=[]#掉落物列表
+
+                player = Player(WEAPON_CONFIG) #实例化玩家
 
 
 
@@ -776,7 +847,8 @@ def main():
                     static_item(item2, 10, 480) #物品图标
 
             #----弹药显示----
-            if current_mag<1000:
+            #if current_mag<1000:
+            if main_weapon != "empty":
                 if current_mag >= 100:#显示主弹夹
                     static_item(num_img[current_mag//100], current_mag_x, current_mag_y) 
                 if current_mag >= 10:
