@@ -33,13 +33,9 @@ def main():
 
     score = 0 #分数
     score_x ,score_y = 2800,10 #分数显示位置
-    current_mag = 120 #当前弹匣子弹数量
-    reserve_ammo = 450 #当前备用弹药数量
     current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
     reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
     developer_x ,developer_y = 60,150 #开发者模式信息显示位置
-    main_weapon="mondragon" #当前主武器
-    vice_weapon="empty" #当前副武器
 
     rec_status = False #是否在更换弹药中
 
@@ -301,6 +297,22 @@ def main():
             "mag_capacity": 30,
             "reserve_ammo": 120,
         },
+        "M249": {
+            "name": "M249",
+            "damage": 6,
+            "gun_type": "lmg",
+            "weight": 8,
+            "mag_capacity": 100,
+            "reserve_ammo": 400,
+        },
+        "AWN": {
+            "name": "AWN",
+            "damage": 15,
+            "gun_type": "sniper",
+            "weight": 10,
+            "mag_capacity": 5,
+            "reserve_ammo": 25,
+        }
     }
 
     class Weapon:
@@ -329,7 +341,7 @@ def main():
             self.active_index = 1 - self.active_index
 
         def pick_up(self, weapon_id):
-            new_data = copy.deepcopy(self.weapon_config[weapon_id])
+            new_data = copy.deepcopy(self.config[weapon_id])
             new_weapon = Weapon(weapon_id, new_data)
             if self.inventory[1-self.active_index].name == "empty":
                 self.inventory[1-self.active_index] = new_weapon
@@ -339,6 +351,10 @@ def main():
         @property
         def current_weapon(self):
             return self.inventory[self.active_index]
+        
+        @property
+        def vice_weapon(self):
+            return self.inventory[1-self.active_index]
 
 
 
@@ -547,7 +563,6 @@ def main():
                             add_hp+=5
                         if event.key == pygame.K_q: #换武器
                             if rec_status == False:
-                                main_weapon, vice_weapon = vice_weapon, main_weapon
                                 player.switch_weapon()
 
         canvas.fill((0, 0, 0))
@@ -606,13 +621,9 @@ def main():
 
                 score = 0 #分数
                 score_x ,score_y = 2800,10 #分数显示位置
-                current_mag = 120 #当前弹匣子弹数量
-                reserve_ammo = 450 #当前备用弹药数量
                 current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
                 reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
                 developer_x ,developer_y = 60,150 #开发者模式信息显示位置
-                main_weapon="mondragon" #当前主武器
-                vice_weapon="empty" #当前副武器
                 rec_status = False #是否在更换弹药中
                 drop_list=[]#掉落物列表
 
@@ -746,10 +757,7 @@ def main():
                         canvas.blit(pick_text, (player_x-20, player_y+240))
                         if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
-                                if vice_weapon == "empty":
-                                    vice_weapon = drop["type"]
-                                else:
-                                    main_weapon = drop["type"]
+                                player.pick_up(drop["type"])
                                 drop_list.remove(drop)
 
 
@@ -806,9 +814,9 @@ def main():
                     canvas.blit(player_frames[p_idx], (player_x, player_y))
                 #枪械绘制
                 if player_hp > 0:
-                    static_item(vice_weapon_img[vice_weapon],player_x-48,player_y-50-10*p_idx)#副武器
+                    static_item(vice_weapon_img[player.vice_weapon.name],player_x-48,player_y-50-10*p_idx)#副武器
                     if not sniper_mode:#主武器
-                        static_item(main_weapon_img[main_weapon],player_x,player_y+55-10*p_idx)
+                        static_item(main_weapon_img[player.current_weapon.name],player_x,player_y+55-10*p_idx)
                     else:
                         # --- 枪械指向逻辑 ---
                         player_display_x = player_world_x + cam_x+156
@@ -819,7 +827,7 @@ def main():
                         dy = get_logic_mouse()[1] - player_display_y
                         rads = math.atan2(dy, dx) #计算鼠标与玩家中心的角度
                         final_angle = -(math.degrees(rads))
-                        draw_rotating_gun(canvas, main_weapon_img[main_weapon],[player_x+156,player_y+120-10*p_idx], final_angle)
+                        draw_rotating_gun(canvas, main_weapon_img[player.current_weapon.name],[player_x+156,player_y+120-10*p_idx], final_angle)
 
             if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
                 pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
@@ -847,30 +855,32 @@ def main():
                     static_item(item2, 10, 480) #物品图标
 
             #----弹药显示----
-            #if current_mag<1000:
-            if main_weapon != "empty":
-                if current_mag >= 100:#显示主弹夹
-                    static_item(num_img[current_mag//100], current_mag_x, current_mag_y) 
-                if current_mag >= 10:
-                    static_item(num_img[(current_mag//10)%10], current_mag_x + 60, current_mag_y) 
-                static_item(num_img[current_mag%10], current_mag_x + 120, current_mag_y) 
+            if player.current_weapon.name != "empty":
+                if player.current_weapon.current_mag >= 100:#显示主弹夹
+                    static_item(num_img[player.current_weapon.current_mag//100], current_mag_x, current_mag_y) 
+                if player.current_weapon.current_mag >= 10:
+                    static_item(num_img[(player.current_weapon.current_mag//10)%10], current_mag_x + 60, current_mag_y) 
+                static_item(num_img[player.current_weapon.current_mag%10], current_mag_x + 120, current_mag_y) 
 
-                rec_bar(canvas, 30, 5, 20, 50) #换弹进度条
-
-                if reserve_ammo >= 100:#显示副弹夹
-                    static_item(num_img2[reserve_ammo//100], reserve_ammo_x, reserve_ammo_y) 
-                elif 100>reserve_ammo >= 10:
-                    static_item(num_img2[(reserve_ammo//10)%10], reserve_ammo_x, reserve_ammo_y) 
+                if rec_status:
+                    rec_bar(canvas, 30, 5, 20, 50)
                 else:
-                    static_item(num_img2[reserve_ammo%10], reserve_ammo_x, reserve_ammo_y) 
-                if reserve_ammo >= 100:
-                    static_item(num_img2[(reserve_ammo//10)%10], reserve_ammo_x + 45, reserve_ammo_y) 
-                elif 100>reserve_ammo >= 10:
-                    static_item(num_img2[reserve_ammo%10], reserve_ammo_x + 45, reserve_ammo_y)
+                    rec_bar(canvas, 30, 5, 20, 50)
+
+                if player.current_weapon.reserve_ammo >= 100:#显示副弹夹
+                    static_item(num_img2[player.current_weapon.reserve_ammo//100], reserve_ammo_x, reserve_ammo_y) 
+                elif 100>player.current_weapon.reserve_ammo >= 10:
+                    static_item(num_img2[(player.current_weapon.reserve_ammo//10)%10], reserve_ammo_x, reserve_ammo_y) 
+                else:
+                    static_item(num_img2[player.current_weapon.reserve_ammo%10], reserve_ammo_x, reserve_ammo_y) 
+                if player.current_weapon.reserve_ammo >= 100:
+                    static_item(num_img2[(player.current_weapon.reserve_ammo//10)%10], reserve_ammo_x + 45, reserve_ammo_y) 
+                elif 100>player.current_weapon.reserve_ammo >= 10:
+                    static_item(num_img2[player.current_weapon.reserve_ammo%10], reserve_ammo_x + 45, reserve_ammo_y)
                 else:
                     pass
-                if reserve_ammo >= 100:
-                    static_item(num_img2[reserve_ammo%10], reserve_ammo_x + 90, reserve_ammo_y)
+                if player.current_weapon.reserve_ammo >= 100:
+                    static_item(num_img2[player.current_weapon.reserve_ammo%10], reserve_ammo_x + 90, reserve_ammo_y)
 
 
             #----得分显示----
@@ -983,8 +993,8 @@ def main():
                 if final_x == None and final_y == None:
                     final_x , final_y = player_world_x, player_world_y
                 move_item(player_frames[0],final_x,final_y)
-                move_item(main_weapon_img[main_weapon],final_x,final_y+55)
-                move_item(vice_weapon_img[vice_weapon],final_x-48,final_y-55)
+                move_item(main_weapon_img[player.current_weapon.name],final_x,final_y+55)
+                move_item(vice_weapon_img[player.vice_weapon.name],final_x-48,final_y-55)
                 if cam_x < 1500:
                     game_over_sound.play()
                     player_world_x -= 30
