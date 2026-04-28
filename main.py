@@ -19,8 +19,12 @@ def main():
     icon_img = pygame.image.load("codemao/r-logo2.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
     mouse_was_pressed = False
-    show1 = False
+    show1 = False #是否显示帮助界面
     show2 = False #游戏是否暂停
+    score_x ,score_y = 2800,10 #分数显示位置
+    current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
+    reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
+    developer_x ,developer_y = 60,150 #开发者模式信息显示位置
     drop_status = False
     developer_mode = False  # 开发者模式开关
     mute = False  # 静音状态
@@ -29,7 +33,7 @@ def main():
     current_time = pygame.time.get_ticks()
     bag_status = True #背包状态
     is_fullscreen = False #全屏状态
-    sniper_mode = True #是否开启狙击枪模式
+    sniper_mode = False #是否开启狙击枪模式
 
     score = 0 #分数
     score_x ,score_y = 2800,10 #分数显示位置
@@ -210,7 +214,6 @@ def main():
     # 背景音乐加载
     bgm_path = "codemao/music/bgm.mp3"
     bgm_path2 = "codemao/music/bgm2.mp3"
-    bgm_path3 = "codemao/music/bgm3.mp3"
     bgm_path4 = "codemao/music/bgm4.mp3"
     bgm_path5 = "codemao/music/bgm5.mp3"
     game_over_sound = pygame.mixer.Sound("codemao/music/game_over1.wav")
@@ -319,6 +322,7 @@ def main():
         def __init__(self, name, config):
             self.name = name
             self.damage = config["damage"]
+            self.gun_type = config["gun_type"]
             self.mag_capacity = config["mag_capacity"]
             self.current_mag = config["mag_capacity"]
             self.reserve_ammo = config["reserve_ammo"]
@@ -564,6 +568,10 @@ def main():
                         if event.key == pygame.K_q: #换武器
                             if rec_status == False:
                                 player.switch_weapon()
+                                if player.current_weapon.gun_type == "sniper":
+                                    sniper_mode = True
+                                else:
+                                    sniper_mode = False
 
         canvas.fill((0, 0, 0))
 
@@ -620,10 +628,6 @@ def main():
                 bag_status=True
 
                 score = 0 #分数
-                score_x ,score_y = 2800,10 #分数显示位置
-                current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
-                reserve_ammo_x ,reserve_ammo_y = 290,40 #当前备用弹药显示位置
-                developer_x ,developer_y = 60,150 #开发者模式信息显示位置
                 rec_status = False #是否在更换弹药中
                 drop_list=[]#掉落物列表
 
@@ -758,6 +762,10 @@ def main():
                         if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
                                 player.pick_up(drop["type"])
+                                if player.current_weapon.gun_type == "sniper":
+                                    sniper_mode = True
+                                else:
+                                    sniper_mode = False
                                 drop_list.remove(drop)
 
 
