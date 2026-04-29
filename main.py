@@ -73,10 +73,12 @@ def main():
                 return img
             except:
                 print(f"Error loading image: {file}")
+    
     def center(img,x,y):#定义图片居中绘制
         rect = img.get_rect()
         rect.center = (x, y)
         return rect
+    
     def draw_health_bar(surface, x, y, current_hp, max_hp,delay):
         bar_width = 230    # 血条总长度（像素）
         bar_height = 28    # 血条高度
@@ -92,10 +94,10 @@ def main():
         highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
         surface.blit(highlight_surf, (x, y))
 
-    def open_bar(surface, x, y, current_hp, max_hp):
+    def open_bar(surface, x, y, current):
         bar_width = 230
         bar_height = 22
-        ratio = max(0, min(current_hp / max_hp, 1))
+        ratio = max(0, min(current/100, 1))
         pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
         color = (89, 212, 205)
         pygame.draw.rect(surface, color, (x, y, int(bar_width * ratio), bar_height))
@@ -523,14 +525,6 @@ def main():
         canvas.blit(txt, txt.get_rect(center=(x + w/2, y + h/2)))
         return is_hover and pygame.mouse.get_pressed()[0]'''
     
-    '''def btn1(img_normal, img_hover, x, y):#长按图片按钮函数，返回是否被长按
-        l_mx, l_my = get_logic_mouse()
-        rect = img_normal.get_rect(topleft=(x, y))
-        is_hover = rect.collidepoint(l_mx, l_my)
-        curr_img = img_hover if is_hover else img_normal
-        canvas.blit(curr_img, (x, y))
-        return is_hover and pygame.mouse.get_pressed()[0]'''
-    
 
     def draw_aim_scope(surface, pos, size=40):#绘制瞄镜
         """
@@ -713,7 +707,7 @@ def main():
             canvas.blit(title_img, (LOGIC_W // 2 - title_img.get_width() // 2, 200))
 
             #if btn(btn_normal, btn_hover, btn_x, btn_y-100):
-            if start_btn.click():
+            if start_btn.click() and show1==False:
                 scene = 'GAME'
                 enemies = [] # 重置敌人
                 player_hp = 100 # 重置血量
@@ -959,7 +953,7 @@ def main():
             move_item(wall,-1500,-725) #墙
             move_item(wall_life,-1480,1050) #墙血量
             if draw_open_bar == True:
-                open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
+                open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening)
             if wall_delay_hp > 0:
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
@@ -1048,7 +1042,7 @@ def main():
                     pygame.mixer.music.stop()
                     pygame.time.delay(200)
 
-                if mute == False:
+                if not mute:
                     if mute_f_btn.click():
                         pygame.mixer.music.set_volume(0) # 静音
                         game_over_sound.set_volume(0) # 静音
