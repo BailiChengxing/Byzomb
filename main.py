@@ -33,7 +33,6 @@ def main():
     current_time = pygame.time.get_ticks()
     bag_status = True #背包状态
     is_fullscreen = False #全屏状态
-    sniper_mode = False #是否开启狙击枪模式
 
     score = 0 #分数
     score_x ,score_y = 2800,10 #分数显示位置
@@ -42,6 +41,7 @@ def main():
     developer_x ,developer_y = 60,150 #开发者模式信息显示位置
 
     rec_status = False #是否在更换弹药中
+    pygame.mouse.set_visible(False)
 
 
 
@@ -114,6 +114,7 @@ def main():
         pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
         pygame.draw.rect(surface, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
         pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+
 
 
     def load_ls(file,x=None,y=None):#加载图片并根据参数调整大小
@@ -267,12 +268,16 @@ def main():
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
     zombie_effect=load_ls(file=["codemao/effect/1.png","codemao/effect/2.png","codemao/effect/3.png","codemao/effect/4.png"],x=100) #僵尸特效
 
+    cursor = load(file="codemao/cursor.png",x=60) #自定义鼠标指针
+
     #——————武器加载——————
     main_weapon_img=load_main_weapon(empty="codemao/weapon/empty.png",
                                  mondragon="codemao/weapon/mondragon.png",
                                  AK47="codemao/weapon/AK47.png",
                                  M249="codemao/weapon/M249.png",
-                                    AWN="codemao/weapon/AWN.png") #主武器字典
+                                    AWN="codemao/weapon/AWN.png",
+                                    QBU="codemao/weapon/QBU.png"
+                                    ) #主武器字典
     vice_weapon_img=load_vice_weapons(main_weapon_img) #副武器字典
     weapon_list=list(main_weapon_img) #主武器列表
     WEAPON_CONFIG = {
@@ -283,6 +288,7 @@ def main():
             "weight": 0,
             "mag_capacity": 0,
             "reserve_ammo": 0,
+            "reload_time": 0
         }, #空武器配置
         "mondragon": {
             "name": "mondragon",
@@ -291,6 +297,7 @@ def main():
             "weight": 5,
             "mag_capacity": 12,
             "reserve_ammo": 45,
+            "reload_time": 1500
         },
         "AK47": {
             "name": "AK47",
@@ -299,6 +306,7 @@ def main():
             "weight": 4,
             "mag_capacity": 30,
             "reserve_ammo": 120,
+            "reload_time": 2000
         },
         "M249": {
             "name": "M249",
@@ -307,6 +315,7 @@ def main():
             "weight": 8,
             "mag_capacity": 100,
             "reserve_ammo": 400,
+            "reload_time": 3200
         },
         "AWN": {
             "name": "AWN",
@@ -315,8 +324,19 @@ def main():
             "weight": 10,
             "mag_capacity": 5,
             "reserve_ammo": 25,
+            "reload_time": 2500
+        },
+        "QBU": {
+            "name": "QBU",
+            "damage": 12,
+            "gun_type": "markman_rifle",
+            "weight": 7,
+            "mag_capacity": 10,
+            "reserve_ammo": 50,
+            "reload_time": 2200
         }
     }
+    test_weapon = "QBU" #测试用武器ID
 
     class Weapon:
         def __init__(self, name, config):
@@ -326,6 +346,8 @@ def main():
             self.mag_capacity = config["mag_capacity"]
             self.current_mag = config["mag_capacity"]
             self.reserve_ammo = config["reserve_ammo"]
+            self.reload_time = config["reload_time"]
+            self.reloading = False
 
         def fire(self):
                 if self.current_mag > 0:
@@ -333,6 +355,14 @@ def main():
                     return True
                 return False
         
+
+        def reload(self):
+            if self.reloading or self.current_weapon.name == "empty":
+                pass
+            else:
+                pass
+        
+
     class Player:
         def __init__(self, config):
             self.config = config
@@ -340,9 +370,14 @@ def main():
             empty = Weapon("empty", copy.deepcopy(config["empty"]))
             self.inventory = [mondragon, empty]
             self.active_index = 0
+            self.sniper_mode = False
 
         def switch_weapon(self):
             self.active_index = 1 - self.active_index
+            if player.current_weapon.gun_type == "sniper" or player.current_weapon.gun_type == "markman_rifle":
+                self.sniper_mode = True
+            else:
+                self.sniper_mode = False
 
         def pick_up(self, weapon_id):
             new_data = copy.deepcopy(self.config[weapon_id])
@@ -351,6 +386,12 @@ def main():
                 self.inventory[1-self.active_index] = new_weapon
             else:
                 self.inventory[self.active_index] = new_weapon
+            if player.current_weapon.gun_type == "sniper" or player.current_weapon.gun_type == "markman_rifle":
+                self.sniper_mode = True
+            else:
+                self.sniper_mode = False
+
+
 
         @property
         def current_weapon(self):
@@ -453,17 +494,36 @@ def main():
     def get_logic_mouse():
         m_x, m_y = pygame.mouse.get_pos()
         return (m_x - nonlocal_current_offset[0]) / nonlocal_current_scale, (m_y - nonlocal_current_offset[1]) / nonlocal_current_scale
-
+    
     def draw_btn(text, x, y, w, h, color):
+        global mouse_was_pressed 
         l_mx, l_my = get_logic_mouse()
         is_hover = x < l_mx < x + w and y < l_my < y + h
         c = [min(i+40, 255) for i in color] if is_hover else color
         pygame.draw.rect(canvas, c, (x, y, w, h), border_radius=15)
         txt = ui_font.render(text, True, (255, 255, 255))
         canvas.blit(txt, txt.get_rect(center=(x + w/2, y + h/2)))
-        return is_hover and pygame.mouse.get_pressed()[0]
+        clicked = False
+        mouse_down = pygame.mouse.get_pressed()[0] # 获取左键实时状态
+        if is_hover and mouse_down:
+            if not mouse_was_pressed:
+                clicked = True
+                mouse_was_pressed = True
+        elif not mouse_down:
+            mouse_was_pressed = False
+        return clicked
+
+
+    '''def draw_btn(text, x, y, w, h, color):#长按普通按钮
+        l_mx, l_my = get_logic_mouse()
+        is_hover = x < l_mx < x + w and y < l_my < y + h
+        c = [min(i+40, 255) for i in color] if is_hover else color
+        pygame.draw.rect(canvas, c, (x, y, w, h), border_radius=15)
+        txt = ui_font.render(text, True, (255, 255, 255))
+        canvas.blit(txt, txt.get_rect(center=(x + w/2, y + h/2)))
+        return is_hover and pygame.mouse.get_pressed()[0]'''
     
-    '''def btn1(img_normal, img_hover, x, y):#长按按钮函数，返回是否被长按
+    '''def btn1(img_normal, img_hover, x, y):#长按图片按钮函数，返回是否被长按
         l_mx, l_my = get_logic_mouse()
         rect = img_normal.get_rect(topleft=(x, y))
         is_hover = rect.collidepoint(l_mx, l_my)
@@ -472,7 +532,7 @@ def main():
         return is_hover and pygame.mouse.get_pressed()[0]'''
     
 
-    def draw_aim_scope(surface, pos, size=40):
+    def draw_aim_scope(surface, pos, size=40):#绘制瞄镜
         """
         在指定位置绘制红色瞄准镜
         :param surface: 绘图表面
@@ -500,6 +560,16 @@ def main():
         pygame.draw.line(surface, RED, (px + line_gap, py), (px + line_length, py), line_width)
         pygame.draw.line(surface, RED, (px, py - line_length), (px, py - line_gap), line_width)
         pygame.draw.line(surface, RED, (px, py + line_gap), (px, py + line_length), line_width)
+
+    def draw_custom_cursor(surface, pos, cursor_image):#绘制自定义光标
+        """
+        在鼠标位置绘制图片光标
+        :param surface: 绘图表面 (canvas)
+        :param pos: 鼠标位置 (mx, my)
+        :param cursor_image: 已经加载好的光标图片
+        """
+        cursor_rect = cursor_image.get_rect(topleft=pos)
+        surface.blit(cursor_image, cursor_rect)
     
     def btn(img_normal, img_hover, x, y):#点击按钮函数，返回是否被点击
         global mouse_was_pressed
@@ -514,13 +584,15 @@ def main():
         if is_hover and mouse_down:
             try:
                 if not mouse_was_pressed:
-                    clicked = True
                     mouse_was_pressed = True # 上锁
+                    clicked = True
             except:
                 pass
         elif not mouse_down:
             mouse_was_pressed = False
         return clicked
+    
+    
     def draw_drop_rect():
         return pygame.Rect(drop_x+130, drop_y+445, 180, 125)
     drop_rect = pygame.Rect(drop_x+130, drop_y+445, 180, 125)
@@ -555,23 +627,12 @@ def main():
                         developer_mode = not developer_mode
                     if event.key == pygame.K_e: #背包开关
                         bag_status = not bag_status
-                    if event.key == pygame.K_F11: #全屏开关
-                        pass
-                        #is_fullscreen = not is_fullscreen  # 切换布尔值
-                        if is_fullscreen:
-                            screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                        else:
-                            screen =pygame.display.set_mode((1600, 900), pygame.RESIZABLE)
                     if show2 == False:
                         if event.key == pygame.K_r: #换弹
                             add_hp+=5
                         if event.key == pygame.K_q: #换武器
                             if rec_status == False:
                                 player.switch_weapon()
-                                if player.current_weapon.gun_type == "sniper":
-                                    sniper_mode = True
-                                else:
-                                    sniper_mode = False
 
         canvas.fill((0, 0, 0))
 
@@ -630,6 +691,8 @@ def main():
                 score = 0 #分数
                 rec_status = False #是否在更换弹药中
                 drop_list=[]#掉落物列表
+                cursor_visible = True
+                last_mouse_move_time = pygame.time.get_ticks()#记录光标最后移动时间
 
                 player = Player(WEAPON_CONFIG) #实例化玩家
 
@@ -660,6 +723,7 @@ def main():
                 canvas.blit(help_paper, center(help_paper,1600,900))
                 if btn(btn_close_normal, btn_close_hover, 2987, 70):
                     show1 = False
+            draw_custom_cursor(canvas, get_logic_mouse(), cursor)
 
 
         elif scene == 'GAME':
@@ -762,10 +826,6 @@ def main():
                         if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
                                 player.pick_up(drop["type"])
-                                if player.current_weapon.gun_type == "sniper":
-                                    sniper_mode = True
-                                else:
-                                    sniper_mode = False
                                 drop_list.remove(drop)
 
 
@@ -823,7 +883,7 @@ def main():
                 #枪械绘制
                 if player_hp > 0:
                     static_item(vice_weapon_img[player.vice_weapon.name],player_x-48,player_y-50-10*p_idx)#副武器
-                    if not sniper_mode:#主武器
+                    if not player.sniper_mode:#主武器
                         static_item(main_weapon_img[player.current_weapon.name],player_x,player_y+55-10*p_idx)
                     else:
                         # --- 枪械指向逻辑 ---
@@ -837,10 +897,10 @@ def main():
                         final_angle = -(math.degrees(rads))
                         draw_rotating_gun(canvas, main_weapon_img[player.current_weapon.name],[player_x+156,player_y+120-10*p_idx], final_angle)
 
-            if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
+            '''if player.sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
                 pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
             else:
-                pygame.mouse.set_visible(True)#暂停时显示鼠标指针
+                pygame.mouse.set_visible(True)#暂停时显示鼠标指针'''
 
             move_item(fence,0,2190) #下围栏
             move_item(tree1,-830,-630) #左树
@@ -853,8 +913,7 @@ def main():
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
                 draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
-            if sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:#绘制瞄准镜
-                draw_aim_scope(canvas, get_logic_mouse())
+
 
             #----背包显示----
             if wall_hp > 0 and player_hp > 0:
@@ -944,6 +1003,20 @@ def main():
                         pygame.mixer.music.set_volume(0.6) # 取消静音
                         game_over_sound.set_volume(0.2) # 取消静音
                         mute = False
+            
+            #——————光标显示变化——————
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEMOTION:
+                    last_mouse_move_time = current_time
+            if current_time - last_mouse_move_time > 2000 and not show2: #没动鼠标就隐藏光标
+                cursor_visible = False
+            else:
+                cursor_visible = True
+            if player.sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:#绘制瞄准镜
+                draw_aim_scope(canvas, get_logic_mouse())
+            else:
+                if cursor_visible:
+                    draw_custom_cursor(canvas, get_logic_mouse(), cursor)
 
 
             #开发者模式
@@ -979,7 +1052,8 @@ def main():
                     pygame.time.delay(200)
                 if draw_btn("add_score", developer_x, final_developer_y+280, 150, 60, (60, 60, 60)):
                     score +=1
-
+                if draw_btn("weapon", developer_x, final_developer_y+410, 150, 60, (60, 60, 60)):
+                    player.pick_up(test_weapon)
             
             if player_hp <= 0:#玩家死亡
                 game_over_sound.play()
@@ -1016,6 +1090,7 @@ def main():
                             pygame.time.delay(200)
 
         elif scene == 'RESULT':
+            player.sniper_mode = False
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img3, (x + offset_x, y + offset_y))
@@ -1035,6 +1110,7 @@ def main():
                 pygame.mixer.music.stop()
                 pygame.time.delay(200)
                 # 缩放投影
+            draw_custom_cursor(canvas, get_logic_mouse(), cursor)
         win_w, win_h = screen.get_size()
         nonlocal_current_scale = min(win_w / LOGIC_W, win_h / LOGIC_H)
         new_size = (int(LOGIC_W * nonlocal_current_scale), int(LOGIC_H * nonlocal_current_scale))
