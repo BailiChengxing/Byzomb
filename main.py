@@ -496,7 +496,7 @@ def main():
         return (m_x - nonlocal_current_offset[0]) / nonlocal_current_scale, (m_y - nonlocal_current_offset[1]) / nonlocal_current_scale
     
     def draw_btn(text, x, y, w, h, color):
-        global mouse_was_pressed 
+        global mouse_was_pressed
         l_mx, l_my = get_logic_mouse()
         is_hover = x < l_mx < x + w and y < l_my < y + h
         c = [min(i+40, 255) for i in color] if is_hover else color
@@ -570,34 +570,92 @@ def main():
         """
         cursor_rect = cursor_image.get_rect(topleft=pos)
         surface.blit(cursor_image, cursor_rect)
+
+
+    class UIButton:
+        def __init__(self, img_normal, img_hover, x, y):
+            self.img_normal = img_normal
+            self.img_hover = img_hover
+            self.rect = self.img_normal.get_rect(topleft=(x, y))
+            
+            # 核心状态：这才是类最强大的地方，每个实例都有自己的“记忆”
+            self.is_pressed = False
+            
+        def click(self):#点击按钮
+                """核心逻辑：自己获取坐标，自己判断点击，在主循环中只需 if btn.check_click(): """
+                self.clicked = False
+                # 1. 直接在类方法内部获取逻辑鼠标位置
+                l_mx, l_my = get_logic_mouse()
+                mouse_down = pygame.mouse.get_pressed()[0]
+                is_hover = self.rect.collidepoint(l_mx, l_my)
+                if is_hover:
+                    if mouse_down:
+                        self.is_pressed = True # 记录在按钮内按下了
+                    else:
+                        if self.is_pressed: # 如果上一帧按着，这一帧松开了
+                            self.is_pressed = False
+                            self.clicked = True
+                else:
+                    if not mouse_down:
+                        self.is_pressed = False
+
+                curr_img = self.img_hover if (is_hover or self.is_pressed) else self.img_normal
+                if is_hover and mouse_down and self.is_pressed:
+                    # 复制一份图片避免污染原始素材
+                    display_img = curr_img.copy()
+                    # 创建黑色遮罩，数值越大越暗（40-60效果较好）
+                    dark_mask = pygame.Surface(display_img.get_size()).convert_alpha()
+                    dark_mask.fill((50, 50, 50)) 
+                    # 使用减法混合实现变暗
+                    display_img.blit(dark_mask, (0, 0), special_flags=pygame.BLEND_RGB_SUB)
+                    canvas.blit(display_img, self.rect)
+                else:
+                    # 正常显示
+                    canvas.blit(curr_img, self.rect)
+                return self.clicked
+        
+        def press(self):
+            l_mx, l_my = get_logic_mouse()
+            rect = self.img_normal.get_rect(topleft=self.rect.topleft)
+            is_hover = rect.collidepoint(l_mx, l_my)
+            mouse_down = pygame.mouse.get_pressed()[0]
+            curr_img = self.img_hover if is_hover else self.img_normal
+            if is_hover and mouse_down and self.is_pressed:
+                # 复制一份图片避免污染原始素材
+                display_img = curr_img.copy()
+                # 创建黑色遮罩，数值越大越暗（40-60效果较好）
+                dark_mask = pygame.Surface(display_img.get_size()).convert_alpha()
+                dark_mask.fill((50, 50, 50)) 
+                # 使用减法混合实现变暗
+                display_img.blit(dark_mask, (0, 0), special_flags=pygame.BLEND_RGB_SUB)
+                canvas.blit(display_img, self.rect)
+            else:
+                # 正常显示
+                canvas.blit(curr_img, self.rect)
+            return is_hover and pygame.mouse.get_pressed()[0]
     
-    def btn(img_normal, img_hover, x, y):#点击按钮函数，返回是否被点击
-        global mouse_was_pressed
-        l_mx, l_my = get_logic_mouse()
-        # 获取图片矩形区域
-        rect = img_normal.get_rect(topleft=(x, y))
-        is_hover = rect.collidepoint(l_mx, l_my)
-        curr_img = img_hover if is_hover else img_normal
-        canvas.blit(curr_img, (x, y))
-        clicked = False
-        mouse_down = pygame.mouse.get_pressed()[0] # 获取左键实时状态
-        if is_hover and mouse_down:
-            try:
-                if not mouse_was_pressed:
-                    mouse_was_pressed = True # 上锁
-                    clicked = True
-            except:
-                pass
-        elif not mouse_down:
-            mouse_was_pressed = False
-        return clicked
     
-    
+
     def draw_drop_rect():
         return pygame.Rect(drop_x+130, drop_y+445, 180, 125)
     drop_rect = pygame.Rect(drop_x+130, drop_y+445, 180, 125)
 
 
+    btn_x = LOGIC_W // 2 - BTN_W // 2
+    btn_y = LOGIC_H // 2
+
+    start_btn = UIButton(btn_normal, btn_hover, btn_x, btn_y-100)
+    help_btn = UIButton(btn_help_normal, btn_help_hover,btn_x, btn_y+320)
+    close_help_btn = UIButton(btn_close_normal, btn_close_hover, 2987, 70)
+
+    back_btn = UIButton(btn_back_normal, btn_back_hover, btn_x+223, btn_y+350)
+    exit_btn = UIButton(exit_normal, exit_hover, 930, 900)
+    continue_btn = UIButton(continue_normal, continue_hover, 1330, 900)
+    mute_f_btn = UIButton(mute_f_normal, mute_f_hover, 1730, 900)
+    mute_t_btn = UIButton(mute_t_normal, mute_t_hover, 1730, 900)
+
+    menu_btn = UIButton(menu_normal, menu_hover, 2130, 900)
+    
 
     # --- 5. 主循环 ---
     while True:
@@ -652,12 +710,10 @@ def main():
             for x in range(-TILE_W, LOGIC_W + TILE_W, TILE_W):
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img2, (x + offset_x, y + offset_y))
-            title_x = LOGIC_W // 2 - title_img.get_width() // 2
-            title_y = 200  # 距离顶部 200 像素
-            canvas.blit(title_img, (title_x, title_y))
-            btn_x = LOGIC_W // 2 - BTN_W // 2
-            btn_y = LOGIC_H // 2
-            if btn(btn_normal, btn_hover, btn_x, btn_y-100):
+            canvas.blit(title_img, (LOGIC_W // 2 - title_img.get_width() // 2, 200))
+
+            #if btn(btn_normal, btn_hover, btn_x, btn_y-100):
+            if start_btn.click():
                 scene = 'GAME'
                 enemies = [] # 重置敌人
                 player_hp = 100 # 重置血量
@@ -696,14 +752,6 @@ def main():
 
                 player = Player(WEAPON_CONFIG) #实例化玩家
 
-
-
-                reload_data = {#弹药系统预留
-                    "is_reloading": False,
-                    "start_time": 0,
-                    "duration": 0,    # 动态传入的时间
-                    "icon": None      # 动态传入的图标
-                }
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
                 if os.path.exists(bgm_path):
                     pygame.mixer.music.stop()
@@ -713,16 +761,19 @@ def main():
                     pygame.mixer.music.play(-1) # 循环播放音乐
                 pygame.time.delay(200)
             
-            if btn(btn_help_normal, btn_help_hover, btn_x, btn_y+320):
+            #if btn(btn_help_normal, btn_help_hover, btn_x, btn_y+320):
+            if help_btn.click():
                 show1 = True
+            
             
             if show1:
                 rect = img.get_rect()
                 rect.center = (1600, 900)
                 help_paper.set_alpha(255)
                 canvas.blit(help_paper, center(help_paper,1600,900))
-                if btn(btn_close_normal, btn_close_hover, 2987, 70):
+                if close_help_btn.click():
                     show1 = False
+            
             draw_custom_cursor(canvas, get_logic_mouse(), cursor)
 
 
@@ -976,7 +1027,8 @@ def main():
                 rect.center = (1600, 900)
                 pause_page.set_alpha(255)
                 canvas.blit(pause_page, center(pause_page,1600,900))
-                if btn(continue_normal, continue_hover, 1330, 900):
+
+                if continue_btn.click():
                     show2 = not show2
                     if show2:
                         # 记录开始暂停的时间点
@@ -984,22 +1036,25 @@ def main():
                     else:
                         # 取消暂停时，计算刚才停了多久，并累加到总暂停时间里
                         total_paused_time += (pygame.time.get_ticks() - start_pause_time)
-                if btn(exit_normal, exit_hover, 930, 900):
+
+                if exit_btn.click():
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
                     pygame.time.delay(200)
-                if btn(menu_normal, menu_hover, 2130, 900):
+
+                if menu_btn.click():
                     play_bgm = bgm_tuple[random.randint(0,2)]
                     scene = 'MENU'
                     pygame.mixer.music.stop()
                     pygame.time.delay(200)
+
                 if mute == False:
-                    if btn(mute_f_normal, mute_f_hover, 1730, 900):
+                    if mute_f_btn.click():
                         pygame.mixer.music.set_volume(0) # 静音
                         game_over_sound.set_volume(0) # 静音
                         mute = True
                 else:
-                    if btn(mute_t_normal, mute_t_hover, 1730, 900):
+                    if mute_t_btn.click():
                         pygame.mixer.music.set_volume(0.6) # 取消静音
                         game_over_sound.set_volume(0.2) # 取消静音
                         mute = False
@@ -1103,7 +1158,7 @@ def main():
             '''if draw_btn("返回菜单", LOGIC_W//2-150, LOGIC_H//2, 300, 80, (50, 150, 255)):
                 scene = 'MENU'
                 pygame.time.delay(200)'''
-            if btn(btn_back_normal, btn_back_hover, btn_x+223, btn_y+350):
+            if back_btn.click():
                 game_over_sound.stop()
                 play_bgm = bgm_tuple[random.randint(0,2)]
                 scene = 'MENU'
