@@ -15,6 +15,7 @@ def main():
     screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
     canvas = pygame.Surface((LOGIC_W, LOGIC_H))
     title="变异狂潮-十周年纪念版demo"
+    pygame.mixer.set_num_channels(32) # 默认是 8，设置为32声道
     pygame.display.set_caption(title)
     icon_img = pygame.image.load("codemao/r-logo2.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
@@ -77,21 +78,6 @@ def main():
         rect = img.get_rect()
         rect.center = (x, y)
         return rect
-    
-    def draw_health_bar(surface, x, y, current_hp, max_hp,delay):
-        bar_width = 230    # 血条总长度（像素）
-        bar_height = 28    # 血条高度
-        ratio = max(0, min(current_hp / max_hp, 1))
-        ratio2 = max(0, min(delay / max_hp, 1))
-        pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
-        pygame.draw.rect(surface, (255, 255, 255), (x, y, int(bar_width * ratio2), bar_height))
-        color = (42, 174, 42) if ratio > 0.5 else (218, 165, 32) if ratio > 0.2 else (178, 34, 34)
-        pygame.draw.rect(surface, color, (x, y, int(bar_width * ratio), bar_height))
-        pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
-        # 创建一个带 Alpha 的临时 Surface 来画半透明高光
-        highlight_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
-        highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
-        surface.blit(highlight_surf, (x, y))
 
     def open_bar(surface, x, y, current):
         bar_width = 230
@@ -220,6 +206,28 @@ def main():
     bgm_path5 = "codemao/music/bgm5.mp3"
     game_over_sound = pygame.mixer.Sound("codemao/music/game_over1.wav")
     game_over_sound.set_volume(0.2)
+    #——————枪支音效——————
+    reload_sound = pygame.mixer.Sound("codemao/music/reload.wav")
+    reload_sound.set_volume(0.3)
+
+    rifle_sound = pygame.mixer.Sound("codemao/music/rifle.wav")#步枪音效
+    rifle_sound.set_volume(0.3)
+    lmg_sound = pygame.mixer.Sound("codemao/music/lmg.wav")#机枪音效
+    lmg_sound.set_volume(0.3)
+    sniper_sound = pygame.mixer.Sound("codemao/music/sniper.wav")#狙击枪音效
+    sniper_sound.set_volume(0.3)
+    submachine_sound = pygame.mixer.Sound("codemao/music/submachine.wav")#冲锋枪音效
+    submachine_sound.set_volume(0.3)
+    shotgun_sound = pygame.mixer.Sound("codemao/music/shotgun.wav")#霰弹枪音效
+    shotgun_sound.set_volume(0.3)
+    laser_sound = pygame.mixer.Sound("codemao/music/laser.wav")#激光枪音效
+    laser_sound.set_volume(0.3)
+    howitzer_sound = pygame.mixer.Sound("codemao/music/howitzer.wav")#榴弹炮音效
+    howitzer_sound.set_volume(0.3)
+    rocket_boom_sound = pygame.mixer.Sound("codemao/music/rocket_boom.wav")#火箭炮音效
+    rocket_boom_sound.set_volume(0.3)
+
+
     bgm_tuple=(bgm_path,bgm_path4,bgm_path5)
     play_bgm = bgm_tuple[random.randint(0,2)]
     #title_img图片加载
@@ -265,7 +273,7 @@ def main():
     #加载树林
     tree1=load(file="codemao/tree1.png",y=int(move_y+800)) #左树
     tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
-    wall=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
+    wall_img=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
     zombie_effect=load_ls(file=["codemao/effect/1.png","codemao/effect/2.png","codemao/effect/3.png","codemao/effect/4.png"],x=100) #僵尸特效
 
@@ -289,80 +297,157 @@ def main():
             "weight": 0,
             "mag_capacity": 0,
             "reserve_ammo": 0,
-            "reload_time": 0
+            "reload_time": 0,
+            "cool_down": 0
         }, #空武器配置
         "mondragon": {
             "name": "mondragon",
             "damage": 10,
-            "gun_type": "common",
-            "weight": 5,
+            "gun_type": "rifle",
+            "weight": 6,
             "mag_capacity": 12,
             "reserve_ammo": 45,
-            "reload_time": 1500
+            "reload_time": 1500,
+            "cool_down" : 500
         },
         "AK47": {
             "name": "AK47",
             "damage": 8,
             "gun_type": "rifle",
-            "weight": 4,
+            "weight": 7,
             "mag_capacity": 30,
             "reserve_ammo": 120,
-            "reload_time": 2000
+            "reload_time": 2000,
+            "cool_down" : 100
         },
         "M249": {
             "name": "M249",
             "damage": 6,
             "gun_type": "lmg",
-            "weight": 8,
+            "weight": 15,
             "mag_capacity": 100,
             "reserve_ammo": 400,
-            "reload_time": 3200
+            "reload_time": 3200,
+            "cool_down" : 65
         },
         "AWN": {
             "name": "AWN",
             "damage": 15,
             "gun_type": "sniper",
-            "weight": 10,
+            "weight": 13,
             "mag_capacity": 5,
             "reserve_ammo": 25,
-            "reload_time": 2500
+            "reload_time": 2500,
+            "cool_down" : 600
         },
         "QBU": {
             "name": "QBU",
             "damage": 12,
             "gun_type": "markman_rifle",
-            "weight": 7,
+            "weight": 8,
             "mag_capacity": 10,
             "reserve_ammo": 50,
-            "reload_time": 2200
+            "reload_time": 2200,
+            "cool_down" : 300
         }
     }
-    test_weapon = "QBU" #测试用武器ID
+    test_weapon = "M249" #测试用武器ID
 
     class Weapon:
         def __init__(self, name, config):
             self.name = name
             self.damage = config["damage"]
             self.gun_type = config["gun_type"]
+            self._weight = config["weight"]
             self.mag_capacity = config["mag_capacity"]
             self.current_mag = config["mag_capacity"]
             self.reserve_ammo = config["reserve_ammo"]
             self.reload_time = config["reload_time"]
-            self.reloading = False
+            self.cool_down = config["cool_down"]
+
+            #——————实现相关功能——————
+            self._reloading = False
+            self.reload_start_time = 0
+            self.last_fire_time = 0
+
+            #定义枪支射击声音
+            if self.gun_type == "rifle":
+                self.weapon_sound = pygame.mixer.Sound(rifle_sound)
+            elif self.gun_type == "markman_rifle":
+                self.weapon_sound = pygame.mixer.Sound(rifle_sound)
+            elif self.gun_type == "lmg":
+                self.weapon_sound = pygame.mixer.Sound(lmg_sound)
+            elif self.gun_type == "sniper":
+                self.weapon_sound = pygame.mixer.Sound(sniper_sound)
+            elif self.gun_type == "submachine":
+                self.weapon_sound = pygame.mixer.Sound(submachine_sound)
+            elif self.gun_type == "laser":
+                self.weapon_sound = pygame.mixer.Sound(laser_sound)
+            elif self.gun_type == "shotgun":
+                self.weapon_sound = pygame.mixer.Sound(shotgun_sound)
+            elif self.gun_type == "howitzer":
+                self.weapon_sound = pygame.mixer.Sound(howitzer_sound)
+            else:
+                self.weapon_sound = pygame.mixer.Sound(rifle_sound)
 
         def fire(self):
-                if self.current_mag > 0:
+            if self.current_mag > 0 and self.reloading == False:
+                now = pygame.time.get_ticks()
+                if now-self.last_fire_time >= self.cool_down:
                     self.current_mag -= 1
-                    return True
-                return False
-        
+                    self.weapon_sound.play()
+                    self.last_fire_time = pygame.time.get_ticks()
+            else:
+                self.reload()
 
         def reload(self):
-            if self.reloading or self.current_weapon.name == "empty":
-                pass
+            if self.name != "empty" and not self.reloading:
+                if self.reserve_ammo > 0 and self.current_mag < self.mag_capacity:
+                    self.reload_start_time = pygame.time.get_ticks()
+                    self._reloading = True
+                    pygame.mixer.Sound(reload_sound).play()
+
+        def update(self):
+            """这个方法需要在主循环里每一帧都调用"""
+            bar_width,bar_height = 15,120
+            x,y=30,5  
+            if self.reloading:
+                now = pygame.time.get_ticks()
+
+                ratio = max(0, min((now-self.reload_start_time) / self.reload_time, 1))
+                current_bar_h = bar_height * ratio
+                pygame.draw.rect(canvas, (30, 30, 30), (x, y, bar_width, bar_height))
+                pygame.draw.rect(canvas, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
+                pygame.draw.rect(canvas, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+
+                # 检查时间是否到了
+                if now - self.reload_start_time >= self.reload_time:
+                    needed = self.mag_capacity - self.current_mag
+                    reload_amount = min(self.reserve_ammo, needed)
+                    self.current_mag += reload_amount
+                    self.reserve_ammo -= reload_amount
+                    self.reloading = False # 换弹结束
             else:
-                pass
+                if self.name != "empty":
+                    ratio = max(0, min(self.current_mag / self.mag_capacity, 1))
+                    current_bar_h = bar_height * ratio
+                    pygame.draw.rect(canvas, (30, 30, 30), (x, y, bar_width, bar_height))
+                    pygame.draw.rect(canvas, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
+                    pygame.draw.rect(canvas, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+
+            
         
+        @property
+        def reloading(self):
+            return self._reloading
+        @property
+        def weight(self):
+            return self._weight
+        
+        @reloading.setter
+        def reloading(self, value):
+            self._reloading = value
+
 
     class Player:
         def __init__(self, config):
@@ -384,14 +469,15 @@ def main():
             self.bool_add=False
             self.bool_sub=False
 
-        
+
         #——————枪支方法——————
         def switch_weapon(self):
-            self.active_index = 1 - self.active_index
-            if player.current_weapon.gun_type == "sniper" or player.current_weapon.gun_type == "markman_rifle":
-                self.sniper_mode = True
-            else:
-                self.sniper_mode = False
+            if not self.current_weapon.reloading:
+                self.active_index = 1 - self.active_index
+                if player.current_weapon.gun_type == "sniper" or player.current_weapon.gun_type == "markman_rifle":
+                    self.sniper_mode = True
+                else:
+                    self.sniper_mode = False
 
         def pick_up(self, weapon_id):
             new_data = copy.deepcopy(self.config[weapon_id])
@@ -475,6 +561,54 @@ def main():
                 h_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
                 h_surf.fill((255, 255, 255, 40))
                 surface.blit(h_surf, (x, y))
+    
+
+    class Wall:
+        def __init__(self):
+                self.max_hp = 100
+                self._hp = 100
+                self._delay_hp = 100
+
+        @property
+        def hp(self):
+            return self._hp
+        
+        @hp.setter
+        def hp(self, value):
+            self._hp = max(0, min(value, self.max_hp))
+            if self._hp == 0:
+                pass
+
+        @property
+        def delay_hp(self):
+            return self._delay_hp
+        
+        def update_vitals(self):
+            if self._delay_hp > self._hp:
+                self._delay_hp -= (self._delay_hp - self._hp) * 0.1
+                if self._delay_hp < 0.1:
+                    self._delay_hp = 0
+            else:
+                self._delay_hp = self._hp
+        
+        def draw_health_bar(self,x,y):
+            if self.delay_hp > 0:
+                #canvas, cam_x-1350, cam_y+1000
+                bar_width = 230    # 血条总长度（像素）
+                bar_height = 28    # 血条高度
+                ratio = max(0, min(self._hp / self.max_hp, 1))
+                ratio2 = max(0, min(self.delay_hp / self.max_hp, 1))
+                pygame.draw.rect(canvas, (30, 30, 30), (x, y, bar_width, bar_height))
+                pygame.draw.rect(canvas, (255, 255, 255), (x, y, int(bar_width * ratio2), bar_height))
+                #color = (42, 174, 42) if ratio > 0.5 else (218, 165, 32) if ratio > 0.2 else (178, 34, 34)
+                color =(70,150,190)
+                pygame.draw.rect(canvas, color, (x, y, int(bar_width * ratio), bar_height))
+                pygame.draw.rect(canvas, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+                # 创建一个带 Alpha 的临时 Surface 来画半透明高光
+                highlight_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
+                highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
+                canvas.blit(highlight_surf, (x, y))
+
 
 
 
@@ -741,8 +875,9 @@ def main():
                 pygame.quit(); sys.exit()
             if event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+
             if event.type == pygame.KEYDOWN:
-                if scene == 'GAME' and player.hp > 0 and wall_hp > 0:
+                if scene == 'GAME' and player.hp > 0 and wall.hp > 0:
                     if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
                         show2 = not show2
                         if show2:
@@ -755,9 +890,9 @@ def main():
                         developer_mode = not developer_mode
                     if event.key == pygame.K_e: #背包开关
                         bag_status = not bag_status
-                    if show2 == False:
+                    if not show2:
                         if event.key == pygame.K_r: #换弹
-                            add_hp+=5
+                            player.current_weapon.reload()
                         if event.key == pygame.K_q: #换武器
                             if rec_status == False:
                                 player.switch_weapon()
@@ -786,19 +921,14 @@ def main():
             if start_btn.click() and show1==False:
                 scene = 'GAME'
                 enemies = [] # 重置敌人
-                wall_hp = 100 # 重置墙血量
                 last_hit_time = 0 # 重置被撞时间戳
-                p_idx=0
-                delay_hp=100 #掉血动画用的延迟血量
-                wall_delay_hp=100 #墙掉血动画用的延迟血量
-                add_hp=0
-                last_time=0 #玩家死亡后等待时间戳
+                p_idx=0 #玩家动画帧索引
                 grave_move=0 #墓碑移动距离
                 grave_a=0 #墓碑加速度
                 grave_alpha=0 #墓碑透明度
                 wall_alpha=255 #墙透明度
                 final_x, final_y = None, None #墙死后玩家位置
-                wall.set_alpha(wall_alpha)
+                wall_img.set_alpha(wall_alpha)
                 wall_life.set_alpha(wall_alpha)
                 show2 = False
                 last_drop_time = -2500 #上次空投时间戳
@@ -811,7 +941,7 @@ def main():
                 drop_status = False #是否可开箱
                 draw_open_bar= False
                 bag=0
-                bag_status=True
+                bag_status=False
 
                 score = 0 #分数
                 rec_status = False #是否在更换弹药中
@@ -820,6 +950,7 @@ def main():
                 last_mouse_move_time = pygame.time.get_ticks()#记录光标最后移动时间
 
                 player = Player(WEAPON_CONFIG) #实例化玩家
+                wall = Wall() #实例化城墙
 
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
                 if os.path.exists(bgm_path):
@@ -831,7 +962,7 @@ def main():
                 pygame.time.delay(200)
             
             #if btn(btn_help_normal, btn_help_hover, btn_x, btn_y+320):
-            if help_btn.click():
+            if help_btn.click() and show1==False:
                 show1 = True
             
             
@@ -840,7 +971,7 @@ def main():
                 rect.center = (1600, 900)
                 help_paper.set_alpha(255)
                 canvas.blit(help_paper, center(help_paper,1600,900))
-                if close_help_btn.click():
+                if close_help_btn.click() and show1==True:
                     show1 = False
             
             draw_custom_cursor(canvas, get_logic_mouse(), cursor)
@@ -849,16 +980,20 @@ def main():
         elif scene == 'GAME':
 
             player.update_vitals() 
+            wall.update_vitals()
+
 
             if show2 == False:
                 current_time = pygame.time.get_ticks() - total_paused_time - begin_time
             # 移动逻辑
-            if player.hp > 0 and wall_hp > 0 and show2 == False:
+            if player.hp > 0 and wall.hp > 0 and show2 == False:
                 keys = pygame.key.get_pressed()
-                if keys[pygame.K_a]: player_world_x -= player_speed
-                if keys[pygame.K_d]: player_world_x += player_speed
-                if keys[pygame.K_w]: player_world_y -= player_speed
-                if keys[pygame.K_s]: player_world_y += player_speed
+                if keys[pygame.K_a]: player_world_x -= (player_speed-player.current_weapon.weight)
+                if keys[pygame.K_d]: player_world_x += (player_speed-player.current_weapon.weight)
+                if keys[pygame.K_w]: player_world_y -= (player_speed-player.current_weapon.weight)
+                if keys[pygame.K_s]: player_world_y += (player_speed-player.current_weapon.weight)
+
+                if keys[pygame.K_j]: player.current_weapon.fire()
 
 
             
@@ -878,7 +1013,7 @@ def main():
             move_item(fence,0,-100) #上围栏
 
             # 敌人生成
-            if wall_hp > 0 and player.hp > 0 and show2 == False:
+            if wall.hp > 0 and player.hp > 0 and show2 == False:
                 if frame_counter % SPAWN_RATE == 0:
                     spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
                     enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter, "alpha": 255})
@@ -947,7 +1082,7 @@ def main():
                     if player_rect.colliderect(drop_item_rect):
                         pick_text = ui_font.render(f"按下F拾取{drop['type']}", True, (0, 49, 207))
                         canvas.blit(pick_text, (player_x-20, player_y+240))
-                        if show2 == False and player.hp>0 and wall_hp>0 and keys[pygame.K_f]:
+                        if show2 == False and player.hp>0 and wall.hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
                                 player.pick_up(drop["type"])
                                 drop_list.remove(drop)
@@ -958,7 +1093,7 @@ def main():
             # --- 敌人更新与绘制 ---
             for e in enemies[:]:
                 draw_x, draw_y = e["x"] + cam_x, e["y"] + cam_y
-                if wall_hp > 0 and player.hp > 0 and show2 == False:
+                if wall.hp > 0 and player.hp > 0 and show2 == False:
                     e["x"] -= ENEMY_SPEED 
                     # 创建敌人的矩形进行碰撞判定
                     enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
@@ -970,7 +1105,7 @@ def main():
                     if e["x"] <= -ENEMY_SIZE-250: #敌人走出左边界后消失
                         e["alpha"] -= 5
                         if e["alpha"] <= 0:
-                            wall_hp -= 5
+                            wall.hp -= 5
                             enemies.remove(e)
 
                 if -ENEMY_SIZE < draw_x < LOGIC_W and -ENEMY_SIZE < draw_y < LOGIC_H:
@@ -979,14 +1114,9 @@ def main():
                     enemy_frames[e_idx].set_alpha(e["alpha"])
                     canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
 
-            if wall_delay_hp > wall_hp:
-                wall_delay_hp -= 0.2
-            elif wall_delay_hp < wall_hp:
-                wall_delay_hp = wall_hp
-
 
             
-            if wall_hp > 0:
+            if wall.hp > 0:
                 # 玩家绘制
                 if keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_w] or keys[pygame.K_s]:
                     p_idx = (frame_counter // ANIM_SPEED) % len(player_frames)
@@ -1013,19 +1143,18 @@ def main():
             move_item(fence,0,2190) #下围栏
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
-            move_item(wall,-1500,-725) #墙
+            move_item(wall_img,-1500,-725) #墙
             move_item(wall_life,-1480,1050) #墙血量
             if draw_open_bar == True:
                 open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening)
 
-            if wall_delay_hp > 0:
-                draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
-            if wall_hp > 0:
+            wall.draw_health_bar(cam_x-1350, cam_y+1000)
+            if wall.hp > 0:
                 player.draw_health_bar(canvas, LOGIC_W//2-120, LOGIC_H//2-160)
-
-
+            
+            player.current_weapon.update() # 更新武器状态（如换弹计时,由于需要换弹药进度条，所以要放在下面，确保图层在上面）
             #----背包显示----
-            if wall_hp > 0 and player.hp > 0:
+            if wall.hp > 0 and player.hp > 0:
                 if bag_status:
                     static_item(item1, 10, 300) #物品图标
                     static_item(item2, 10, 480) #物品图标
@@ -1037,11 +1166,6 @@ def main():
                 if player.current_weapon.current_mag >= 10:
                     static_item(num_img[(player.current_weapon.current_mag//10)%10], current_mag_x + 60, current_mag_y) 
                 static_item(num_img[player.current_weapon.current_mag%10], current_mag_x + 120, current_mag_y) 
-
-                if rec_status:
-                    rec_bar(canvas, 30, 5, 20, 50)
-                else:
-                    rec_bar(canvas, 30, 5, 20, 50)
 
                 if player.current_weapon.reserve_ammo >= 100:#显示副弹夹
                     static_item(num_img2[player.current_weapon.reserve_ammo//100], reserve_ammo_x, reserve_ammo_y) 
@@ -1125,7 +1249,7 @@ def main():
                 cursor_visible = False
             else:
                 cursor_visible = True
-            if player.sniper_mode and show2==False and player.hp > 0 and wall_hp > 0:#绘制瞄准镜
+            if player.sniper_mode and show2==False and player.hp > 0 and wall.hp > 0:#绘制瞄准镜
                 draw_aim_scope(canvas, get_logic_mouse())
             else:
                 if cursor_visible:
@@ -1141,15 +1265,17 @@ def main():
                 location_text = ui_font.render(f"cam_x: {cam_x}, cam_y: {cam_y}", True, (255, 255, 0))
                 location_text2 = ui_font.render(f"player_world_x: {player_world_x}, player_world_y: {player_world_y}", True, (255, 255, 0))
                 frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
-                wall_hp_text = ui_font.render(f"Wall HP: {wall_hp}", True, (255, 255, 0))
+                wall.hp_text = ui_font.render(f"Wall HP: {wall.hp}", True, (255, 255, 0))
+                wall.delay_hp_text = ui_font.render(f"Wall Delay HP: {wall.delay_hp}", True, (255, 255, 0))
                 develop_show_list=[
                     fps_text,
                     current_time_text,
                     health_text,
-                    wall_hp_text,
+                    wall.hp_text,
                     location_text,
                     location_text2,
-                    frame_counter_text
+                    frame_counter_text,
+                    wall.delay_hp_text
                 ]
                 for i, text in enumerate(develop_show_list):
                     canvas.blit(text, (developer_x, developer_y + i*40))
@@ -1157,7 +1283,7 @@ def main():
                 if draw_btn("+player.hp", developer_x, final_developer_y+70, 150, 60 ,(60, 60, 60)):
                     player.hp += 10
                 if draw_btn("-wall.hp", developer_x, final_developer_y+140, 150, 60 ,(60, 60, 60)):
-                    wall_hp -= 10
+                    wall.hp -= 10
                 game_over_sound
                 if draw_btn("结束", developer_x, final_developer_y+210, 150, 60, (60, 60, 60)):
                     scene = 'RESULT'
@@ -1182,7 +1308,8 @@ def main():
                     pygame.time.delay(600)
                     scene = 'RESULT'
                     pygame.time.delay(200)
-            elif wall_hp <= 0:#墙被破坏
+
+            elif wall.hp <= 0:#墙被破坏
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
                 if final_x == None and final_y == None:
@@ -1194,9 +1321,9 @@ def main():
                     game_over_sound.play()
                     player_world_x -= 30
                 else:
-                    if wall_delay_hp <= 0:
+                    if wall.delay_hp <= 0 :
                         wall_alpha -= 5
-                        wall.set_alpha(wall_alpha)
+                        wall_img.set_alpha(wall_alpha)
                         wall_life.set_alpha(wall_alpha)
                         if wall_alpha <= 0:
                             scene = 'RESULT'
