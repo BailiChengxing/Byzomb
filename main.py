@@ -367,6 +367,8 @@ def main():
 
     class Player:
         def __init__(self, config):
+
+            #——————枪支属性——————
             self.config = config
             mondragon = Weapon("mondragon", copy.deepcopy(config["mondragon"]))
             empty = Weapon("empty", copy.deepcopy(config["empty"]))
@@ -374,6 +376,17 @@ def main():
             self.active_index = 0
             self.sniper_mode = False
 
+            #——————血量属性——————
+            self.max_hp = 100 #最大血量
+            self._hp = 100          # 1. 实际血量
+            self.goal_hp = 100      # 2. 预期值（用于回血深绿条）
+            self.display_hp = 100   # 3. 显示值（彩色主体条）
+            self.residual_hp = 100  # 4. 残留值（用于扣血白条）
+            self.bool_add=False
+            self.bool_sub=False
+
+        
+        #——————枪支方法——————
         def switch_weapon(self):
             self.active_index = 1 - self.active_index
             if player.current_weapon.gun_type == "sniper" or player.current_weapon.gun_type == "markman_rifle":
@@ -393,15 +406,86 @@ def main():
             else:
                 self.sniper_mode = False
 
-
-
         @property
         def current_weapon(self):
             return self.inventory[self.active_index]
-        
         @property
         def vice_weapon(self):
             return self.inventory[1-self.active_index]
+        
+
+        #——————血量方法——————
+        @property
+        def hp(self):
+            return self._hp
+        
+        @hp.setter
+        def hp(self, value):
+            """当执行 player.hp = ... 或 player.hp += ... 时自动触发"""
+            old_hp = self._hp
+            self._hp = max(0, min(value, self.max_hp))# 1. 自动限制范围
+
+            if self._hp > old_hp:
+                # 回血瞬间：预期值立刻拉满，引导显示值追赶
+                self.goal_hp = self._hp
+                self.bool_sub=False
+                self.bool_add=True
+            elif self._hp < old_hp:
+                # 扣血瞬间：显示值立刻缩回，留下残留值在后面追赶
+                self.display_hp = self._hp
+                self.bool_sub=True
+                self.bool_add=False
+            else:
+                self.bool_sub=False
+                self.bool_add=False
+            if self._hp == 0:#角色死亡后的处理
+                pass
+
+        def update_vitals(self):
+            """三阶动画同步"""
+            # 1. 回血逻辑：让显示值追赶预期值
+            if self.bool_add and self.display_hp < self.goal_hp:
+                self.display_hp += (self.goal_hp - self.display_hp) * 0.1
+            
+            # 2. 扣血逻辑：让残留值追赶显示值
+            if self.bool_sub and self.residual_hp > self.display_hp:
+                self.residual_hp -= (self.residual_hp - self.display_hp) * 0.1
+                
+            # 3. 静态对齐
+            if self.bool_sub==False:
+                self.residual_hp = self.display_hp
+
+        def draw_health_bar(self, surface, x, y):
+            bar_width = 230
+            bar_height = 28
+            
+            # 1. 背景层 (深灰)
+            pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
+
+            # 2. 残留层 (白色) - 只有扣血时 residual_hp > display_hp 才有意义
+            if self.bool_sub and self.residual_hp > self.display_hp:
+                white_w = int(bar_width * (self.residual_hp / self.max_hp))
+                pygame.draw.rect(surface, (255, 255, 255), (x, y, white_w, bar_height))
+
+            # 3. 预期层 (深绿) - 只有回血时 goal_hp > display_hp 才有意义
+            if self.bool_add and self.goal_hp > self.display_hp:
+                goal_w = int(bar_width * (self.goal_hp / self.max_hp))
+                pygame.draw.rect(surface, (20, 80, 20), (x, y, goal_w, bar_height))
+
+            # 4. 主色条层 (当前显示)
+            ratio = self.display_hp / self.max_hp
+            color = (42, 174, 42) if ratio > 0.5 else (218, 165, 32) if ratio > 0.2 else (178, 34, 34)
+            pygame.draw.rect(surface, color, (x, y, int(bar_width * ratio), bar_height))
+
+            # 5. 边框与装饰
+            pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+            # 高光效果叠加在主色条上
+            if int(bar_width * ratio) > 0:
+                h_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
+                h_surf.fill((255, 255, 255, 40))
+                surface.blit(h_surf, (x, y))
+
+
 
 
 
@@ -627,6 +711,7 @@ def main():
                 # 正常显示
                 canvas.blit(curr_img, self.rect)
             return is_hover and pygame.mouse.get_pressed()[0]
+        
     
     
 
@@ -772,6 +857,9 @@ def main():
 
 
         elif scene == 'GAME':
+
+            player.update_vitals() 
+
             if show2 == False:
                 current_time = pygame.time.get_ticks() - total_paused_time - begin_time
             # 移动逻辑
@@ -798,6 +886,7 @@ def main():
                 for y in range(-TILE_H, LOGIC_H + TILE_H, TILE_H):
                     canvas.blit(tile_img2, (x + offset_x, y + offset_y))
             move_item(fence,0,-100) #上围栏
+
             # 敌人生成
             if wall_hp > 0 and player_hp > 0 and show2 == False:
                 if frame_counter % SPAWN_RATE == 0:
@@ -886,7 +975,8 @@ def main():
                     # 【碰撞逻辑】
                     if player_rect.colliderect(enemy_rect):
                         if current_time - last_hit_time > hit_cooldown:
-                            player_hp -= 5
+                            #player_hp -= 5
+                            player.hp -= 5
                             last_hit_time = current_time #更新被撞时间戳
                     if e["x"] <= -ENEMY_SIZE-250: #敌人走出左边界后消失
                         e["alpha"] -= 5
@@ -954,10 +1044,12 @@ def main():
             move_item(wall_life,-1480,1050) #墙血量
             if draw_open_bar == True:
                 open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening)
+
             if wall_delay_hp > 0:
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
-                draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
+                #draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
+                player.draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140)
 
 
             #----背包显示----
@@ -1073,7 +1165,7 @@ def main():
                 fps = int(clock.get_fps())
                 fps_text = ui_font.render(f"FPS: {fps}", True, (255, 255, 0))
                 current_time_text = ui_font.render(f"Time: {current_time//1000}s", True, (255, 255, 0))
-                health_text = ui_font.render(f"HP: {player_hp}", True, (255, 255, 0))
+                health_text = ui_font.render(f"HP: {player.hp}", True, (255, 255, 0))
                 location_text = ui_font.render(f"cam_x: {cam_x}, cam_y: {cam_y}", True, (255, 255, 0))
                 location_text2 = ui_font.render(f"player_world_x: {player_world_x}, player_world_y: {player_world_y}", True, (255, 255, 0))
                 frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
@@ -1090,8 +1182,8 @@ def main():
                 for i, text in enumerate(develop_show_list):
                     canvas.blit(text, (developer_x, developer_y + i*40))
                     final_developer_y = developer_y + i*40
-                if draw_btn("-player_hp", developer_x, final_developer_y+70, 150, 60 ,(60, 60, 60)):
-                    player_hp -= 10
+                if draw_btn("+player_hp", developer_x, final_developer_y+70, 150, 60 ,(60, 60, 60)):
+                    player.hp += 5
                 if draw_btn("-wall_hp", developer_x, final_developer_y+140, 150, 60 ,(60, 60, 60)):
                     wall_hp -= 10
                 game_over_sound
