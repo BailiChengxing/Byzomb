@@ -306,7 +306,7 @@ def main():
             "gun_type": "rifle",
             "weight": 6,
             "mag_capacity": 12,
-            "reserve_ammo": 45,
+            "reserve_ammo": 48,
             "reload_time": 1500,
             "cool_down" : 500
         },
@@ -338,7 +338,7 @@ def main():
             "mag_capacity": 5,
             "reserve_ammo": 25,
             "reload_time": 2500,
-            "cool_down" : 600
+            "cool_down" : 900
         },
         "QBU": {
             "name": "QBU",
@@ -594,7 +594,7 @@ def main():
         def draw_health_bar(self,x,y):
             if self.delay_hp > 0:
                 #canvas, cam_x-1350, cam_y+1000
-                bar_width = 230    # 血条总长度（像素）
+                bar_width = 350    # 血条总长度（像素）
                 bar_height = 28    # 血条高度
                 ratio = max(0, min(self._hp / self.max_hp, 1))
                 ratio2 = max(0, min(self.delay_hp / self.max_hp, 1))
@@ -1148,7 +1148,7 @@ def main():
             if draw_open_bar == True:
                 open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening)
 
-            wall.draw_health_bar(cam_x-1350, cam_y+1000)
+            wall.draw_health_bar(cam_x-1422, cam_y+1000)
             if wall.hp > 0:
                 player.draw_health_bar(canvas, LOGIC_W//2-120, LOGIC_H//2-160)
             
@@ -1240,20 +1240,6 @@ def main():
                         pygame.mixer.music.set_volume(0.6) # 取消静音
                         game_over_sound.set_volume(0.2) # 取消静音
                         mute = False
-            
-            #——————光标显示变化——————
-            for event in pygame.event.get():
-                if event.type == pygame.MOUSEMOTION:
-                    last_mouse_move_time = current_time
-            if current_time - last_mouse_move_time > 2000 and not show2: #没动鼠标就隐藏光标
-                cursor_visible = False
-            else:
-                cursor_visible = True
-            if player.sniper_mode and show2==False and player.hp > 0 and wall.hp > 0:#绘制瞄准镜
-                draw_aim_scope(canvas, get_logic_mouse())
-            else:
-                if cursor_visible:
-                    draw_custom_cursor(canvas, get_logic_mouse(), cursor)
 
 
             #开发者模式
@@ -1293,6 +1279,20 @@ def main():
                     score +=1
                 if draw_btn("weapon", developer_x, final_developer_y+410, 150, 60, (60, 60, 60)):
                     player.pick_up(test_weapon)
+
+            #——————光标显示变化——————
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEMOTION:
+                    last_mouse_move_time = current_time
+            if current_time - last_mouse_move_time > 2000 and not show2: #没动鼠标就隐藏光标
+                cursor_visible = False
+            else:
+                cursor_visible = True
+            if player.sniper_mode and show2==False and player.hp > 0 and wall.hp > 0:#绘制瞄准镜
+                draw_aim_scope(canvas, get_logic_mouse())
+            else:
+                if cursor_visible:
+                    draw_custom_cursor(canvas, get_logic_mouse(), cursor)
             
             if player.hp <= 0:#玩家死亡
                 game_over_sound.play()
