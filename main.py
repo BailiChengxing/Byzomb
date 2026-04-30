@@ -18,7 +18,6 @@ def main():
     pygame.display.set_caption(title)
     icon_img = pygame.image.load("codemao/r-logo2.png").convert_alpha() 
     pygame.display.set_icon(icon_img)
-    mouse_was_pressed = False
     show1 = False #是否显示帮助界面
     show2 = False #游戏是否暂停
     score_x ,score_y = 2800,10 #分数显示位置
@@ -424,7 +423,6 @@ def main():
             """当执行 player.hp = ... 或 player.hp += ... 时自动触发"""
             old_hp = self._hp
             self._hp = max(0, min(value, self.max_hp))# 1. 自动限制范围
-
             if self._hp > old_hp:
                 # 回血瞬间：预期值立刻拉满，引导显示值追赶
                 self.goal_hp = self._hp
@@ -445,12 +443,10 @@ def main():
             """三阶动画同步"""
             # 1. 回血逻辑：让显示值追赶预期值
             if self.bool_add and self.display_hp < self.goal_hp:
-                self.display_hp += (self.goal_hp - self.display_hp) * 0.1
-            
+                self.display_hp += (self.goal_hp - self.display_hp) * 0.05
             # 2. 扣血逻辑：让残留值追赶显示值
             if self.bool_sub and self.residual_hp > self.display_hp:
                 self.residual_hp -= (self.residual_hp - self.display_hp) * 0.1
-                
             # 3. 静态对齐
             if self.bool_sub==False:
                 self.residual_hp = self.display_hp
@@ -458,25 +454,20 @@ def main():
         def draw_health_bar(self, surface, x, y):
             bar_width = 230
             bar_height = 28
-            
             # 1. 背景层 (深灰)
             pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
-
             # 2. 残留层 (白色) - 只有扣血时 residual_hp > display_hp 才有意义
             if self.bool_sub and self.residual_hp > self.display_hp:
                 white_w = int(bar_width * (self.residual_hp / self.max_hp))
                 pygame.draw.rect(surface, (255, 255, 255), (x, y, white_w, bar_height))
-
             # 3. 预期层 (深绿) - 只有回血时 goal_hp > display_hp 才有意义
             if self.bool_add and self.goal_hp > self.display_hp:
                 goal_w = int(bar_width * (self.goal_hp / self.max_hp))
-                pygame.draw.rect(surface, (20, 80, 20), (x, y, goal_w, bar_height))
-
+                pygame.draw.rect(surface, (24,100,24), (x, y, goal_w, bar_height))
             # 4. 主色条层 (当前显示)
             ratio = self.display_hp / self.max_hp
             color = (42, 174, 42) if ratio > 0.5 else (218, 165, 32) if ratio > 0.2 else (178, 34, 34)
             pygame.draw.rect(surface, color, (x, y, int(bar_width * ratio), bar_height))
-
             # 5. 边框与装饰
             pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
             # 高光效果叠加在主色条上
@@ -751,7 +742,7 @@ def main():
             if event.type == pygame.VIDEORESIZE:
                 screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
             if event.type == pygame.KEYDOWN:
-                if scene == 'GAME' and player_hp > 0 and wall_hp > 0:
+                if scene == 'GAME' and player.hp > 0 and wall_hp > 0:
                     if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
                         show2 = not show2
                         if show2:
@@ -795,7 +786,6 @@ def main():
             if start_btn.click() and show1==False:
                 scene = 'GAME'
                 enemies = [] # 重置敌人
-                player_hp = 100 # 重置血量
                 wall_hp = 100 # 重置墙血量
                 last_hit_time = 0 # 重置被撞时间戳
                 p_idx=0
@@ -863,7 +853,7 @@ def main():
             if show2 == False:
                 current_time = pygame.time.get_ticks() - total_paused_time - begin_time
             # 移动逻辑
-            if player_hp > 0 and wall_hp > 0 and show2 == False:
+            if player.hp > 0 and wall_hp > 0 and show2 == False:
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_a]: player_world_x -= player_speed
                 if keys[pygame.K_d]: player_world_x += player_speed
@@ -888,7 +878,7 @@ def main():
             move_item(fence,0,-100) #上围栏
 
             # 敌人生成
-            if wall_hp > 0 and player_hp > 0 and show2 == False:
+            if wall_hp > 0 and player.hp > 0 and show2 == False:
                 if frame_counter % SPAWN_RATE == 0:
                     spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
                     enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter, "alpha": 255})
@@ -957,7 +947,7 @@ def main():
                     if player_rect.colliderect(drop_item_rect):
                         pick_text = ui_font.render(f"按下F拾取{drop['type']}", True, (0, 49, 207))
                         canvas.blit(pick_text, (player_x-20, player_y+240))
-                        if show2 == False and player_hp>0 and wall_hp>0 and keys[pygame.K_f]:
+                        if show2 == False and player.hp>0 and wall_hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
                                 player.pick_up(drop["type"])
                                 drop_list.remove(drop)
@@ -968,14 +958,13 @@ def main():
             # --- 敌人更新与绘制 ---
             for e in enemies[:]:
                 draw_x, draw_y = e["x"] + cam_x, e["y"] + cam_y
-                if wall_hp > 0 and player_hp > 0 and show2 == False:
+                if wall_hp > 0 and player.hp > 0 and show2 == False:
                     e["x"] -= ENEMY_SPEED 
                     # 创建敌人的矩形进行碰撞判定
                     enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
                     # 【碰撞逻辑】
                     if player_rect.colliderect(enemy_rect):
                         if current_time - last_hit_time > hit_cooldown:
-                            #player_hp -= 5
                             player.hp -= 5
                             last_hit_time = current_time #更新被撞时间戳
                     if e["x"] <= -ENEMY_SIZE-250: #敌人走出左边界后消失
@@ -990,21 +979,10 @@ def main():
                     enemy_frames[e_idx].set_alpha(e["alpha"])
                     canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
 
-            if delay_hp > player_hp:
-                delay_hp -= 0.2
-            elif delay_hp < player_hp:
-                delay_hp = player_hp
             if wall_delay_hp > wall_hp:
                 wall_delay_hp -= 0.2
             elif wall_delay_hp < wall_hp:
                 wall_delay_hp = wall_hp
-
-            if player_hp > 100:
-                player_hp = 100
-            if add_hp > 0:
-                player_hp += 0.2
-                add_hp -= 0.2
-
 
 
             
@@ -1016,7 +994,7 @@ def main():
                 else:
                     canvas.blit(player_frames[p_idx], (player_x, player_y))
                 #枪械绘制
-                if player_hp > 0:
+                if player.hp > 0:
                     static_item(vice_weapon_img[player.vice_weapon.name],player_x-48,player_y-50-10*p_idx)#副武器
                     if not player.sniper_mode:#主武器
                         static_item(main_weapon_img[player.current_weapon.name],player_x,player_y+55-10*p_idx)
@@ -1032,11 +1010,6 @@ def main():
                         final_angle = -(math.degrees(rads))
                         draw_rotating_gun(canvas, main_weapon_img[player.current_weapon.name],[player_x+156,player_y+120-10*p_idx], final_angle)
 
-            '''if player.sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:
-                pygame.mouse.set_visible(False)#狙击枪时隐藏鼠标指针
-            else:
-                pygame.mouse.set_visible(True)#暂停时显示鼠标指针'''
-
             move_item(fence,0,2190) #下围栏
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
@@ -1048,12 +1021,11 @@ def main():
             if wall_delay_hp > 0:
                 draw_health_bar(canvas, cam_x-1350, cam_y+1000, wall_hp, 100,wall_delay_hp)#墙血条
             if wall_hp > 0:
-                #draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140, player_hp, 100,delay_hp) #血条
-                player.draw_health_bar(canvas, LOGIC_W//2-118, LOGIC_H//2-140)
+                player.draw_health_bar(canvas, LOGIC_W//2-120, LOGIC_H//2-160)
 
 
             #----背包显示----
-            if wall_hp > 0 and player_hp > 0:
+            if wall_hp > 0 and player.hp > 0:
                 if bag_status:
                     static_item(item1, 10, 300) #物品图标
                     static_item(item2, 10, 480) #物品图标
@@ -1153,7 +1125,7 @@ def main():
                 cursor_visible = False
             else:
                 cursor_visible = True
-            if player.sniper_mode and show2==False and player_hp > 0 and wall_hp > 0:#绘制瞄准镜
+            if player.sniper_mode and show2==False and player.hp > 0 and wall_hp > 0:#绘制瞄准镜
                 draw_aim_scope(canvas, get_logic_mouse())
             else:
                 if cursor_visible:
@@ -1182,9 +1154,9 @@ def main():
                 for i, text in enumerate(develop_show_list):
                     canvas.blit(text, (developer_x, developer_y + i*40))
                     final_developer_y = developer_y + i*40
-                if draw_btn("+player_hp", developer_x, final_developer_y+70, 150, 60 ,(60, 60, 60)):
-                    player.hp += 5
-                if draw_btn("-wall_hp", developer_x, final_developer_y+140, 150, 60 ,(60, 60, 60)):
+                if draw_btn("+player.hp", developer_x, final_developer_y+70, 150, 60 ,(60, 60, 60)):
+                    player.hp += 10
+                if draw_btn("-wall.hp", developer_x, final_developer_y+140, 150, 60 ,(60, 60, 60)):
                     wall_hp -= 10
                 game_over_sound
                 if draw_btn("结束", developer_x, final_developer_y+210, 150, 60, (60, 60, 60)):
@@ -1196,7 +1168,7 @@ def main():
                 if draw_btn("weapon", developer_x, final_developer_y+410, 150, 60, (60, 60, 60)):
                     player.pick_up(test_weapon)
             
-            if player_hp <= 0:#玩家死亡
+            if player.hp <= 0:#玩家死亡
                 game_over_sound.play()
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
