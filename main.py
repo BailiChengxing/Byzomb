@@ -285,7 +285,8 @@ def main():
                                  AK47="codemao/weapon/AK47.png",
                                  M249="codemao/weapon/M249.png",
                                     AWN="codemao/weapon/AWN.png",
-                                    QBU="codemao/weapon/QBU.png"
+                                    QBU="codemao/weapon/QBU.png",
+                                    _950M="codemao/weapon/950M.png"
                                     ) #主武器字典
     vice_weapon_img=load_vice_weapons(main_weapon_img) #副武器字典
     weapon_list=list(main_weapon_img) #主武器列表
@@ -349,9 +350,19 @@ def main():
             "reserve_ammo": 50,
             "reload_time": 2200,
             "cool_down" : 300
+        },
+        "_950M": {
+            "name": "950M",
+            "damage": 20,
+            "gun_type": "shotgun",
+            "weight": 9,
+            "mag_capacity": 5,
+            "reserve_ammo": 30,
+            "reload_time": 2200,
+            "cool_down" : 300
         }
     }
-    test_weapon = "M249" #测试用武器ID
+    test_weapon = "_950M" #测试用武器ID
 
     class Weapon:
         def __init__(self, name, config):
@@ -391,14 +402,27 @@ def main():
                 self.weapon_sound = pygame.mixer.Sound(rifle_sound)
 
         def fire(self):
-            if self.current_mag > 0 and self.reloading == False:
-                now = pygame.time.get_ticks()
-                if now-self.last_fire_time >= self.cool_down:
-                    self.current_mag -= 1
-                    self.weapon_sound.play()
-                    self.last_fire_time = pygame.time.get_ticks()
-            else:
-                self.reload()
+            if self.gun_type == "shotgun":#霰弹枪可在换弹过程中继续开枪，开枪中断换弹
+                if self.current_mag > 0:
+                    now = pygame.time.get_ticks()
+                    if now-self.last_fire_time >= self.cool_down:
+                        if self.reloading:
+                            self.reloading = False # 开枪中断换弹
+                        self.current_mag -= 1
+                        self.weapon_sound.play()
+                        self.last_fire_time = pygame.time.get_ticks()
+                else:
+                    self.reload()
+                pass
+            else:#其他枪换弹过程中无法开枪，必须等换弹结束才能开枪
+                if self.current_mag > 0 and self.reloading == False:
+                    now = pygame.time.get_ticks()
+                    if now-self.last_fire_time >= self.cool_down:
+                        self.current_mag -= 1
+                        self.weapon_sound.play()
+                        self.last_fire_time = pygame.time.get_ticks()
+                else:
+                    self.reload()
 
         def reload(self):
             if self.name != "empty" and not self.reloading:
@@ -414,19 +438,33 @@ def main():
             if self.reloading:
                 now = pygame.time.get_ticks()
 
-                ratio = max(0, min((now-self.reload_start_time) / self.reload_time, 1))
-                current_bar_h = bar_height * ratio
-                pygame.draw.rect(canvas, (30, 30, 30), (x, y, bar_width, bar_height))
-                pygame.draw.rect(canvas, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
-                pygame.draw.rect(canvas, (100, 100, 100), (x, y, bar_width, bar_height), 2)
-
                 # 检查时间是否到了
-                if now - self.reload_start_time >= self.reload_time:
-                    needed = self.mag_capacity - self.current_mag
-                    reload_amount = min(self.reserve_ammo, needed)
-                    self.current_mag += reload_amount
-                    self.reserve_ammo -= reload_amount
-                    self.reloading = False # 换弹结束
+                if self.gun_type == "shotgun":#霰弹枪每发子弹单独换弹，换弹过程中可以继续开枪，开枪中断换弹
+                    ratio = max(0, min(self.current_mag / self.mag_capacity, 1))
+                    current_bar_h = bar_height * ratio
+                    pygame.draw.rect(canvas, (30, 30, 30), (x, y, bar_width, bar_height))
+                    pygame.draw.rect(canvas, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
+                    pygame.draw.rect(canvas, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+                    each_reload_time = self.reload_time / self.mag_capacity
+                    if now - self.reload_start_time >= each_reload_time:
+                        if self.current_mag < self.mag_capacity and self.reserve_ammo > 0:
+                            self.current_mag += 1
+                            self.reserve_ammo -= 1
+                            self.reload_start_time = now # 重置换弹计时，继续下一发换弹
+                            if self.current_mag == self.mag_capacity or self.reserve_ammo == 0:
+                                self.reloading = False # 换弹结束
+                else:#其他枪换弹过程中无法开枪，必须等换弹结束才能开枪
+                    ratio = max(0, min((now-self.reload_start_time) / self.reload_time, 1))
+                    current_bar_h = bar_height * ratio
+                    pygame.draw.rect(canvas, (30, 30, 30), (x, y, bar_width, bar_height))
+                    pygame.draw.rect(canvas, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
+                    pygame.draw.rect(canvas, (100, 100, 100), (x, y, bar_width, bar_height), 2)
+                    if now - self.reload_start_time >= self.reload_time:
+                        needed = self.mag_capacity - self.current_mag
+                        reload_amount = min(self.reserve_ammo, needed)
+                        self.current_mag += reload_amount
+                        self.reserve_ammo -= reload_amount
+                        self.reloading = False # 换弹结束
             else:
                 if self.name != "empty":
                     ratio = max(0, min(self.current_mag / self.mag_capacity, 1))
@@ -1031,7 +1069,10 @@ def main():
                     draw_open_bar = True
                     #open_bar(canvas,cam_x+drop_x+118,cam_y+t_drop_y+290,drop_opening,100)
                     if drop_opening >= 100:
-                        drop_list.append({"type":weapon_list[random.randint(2, len(weapon_list)-1)],"x":drop_x,"y":t_drop_y})
+                        if developer_mode:
+                            drop_list.append({"type":test_weapon,"x":drop_x,"y":t_drop_y})
+                        else:
+                            drop_list.append({"type":weapon_list[random.randint(2, len(weapon_list)-1)],"x":drop_x,"y":t_drop_y})
                         drop_status = False
                         draw_open_bar = False
                 elif  not player_rect.colliderect(drop_rect) and drop_status ==True:
@@ -1076,11 +1117,10 @@ def main():
             if drop_list:
                 for drop in drop_list[:]:
                     pygame.draw.ellipse(canvas, (45,29,36), [cam_x+drop["x"]+123, cam_y+drop["y"]+502, 260, 50], width=0)
-                    #move_item(weapon_list[drop["type"]], drop["x"]+90, drop["y"]+420)
                     move_item(main_weapon_img[drop["type"]], drop["x"]+90, drop["y"]+420)
                     drop_item_rect = pygame.Rect(drop["x"]+180, drop["y"]+450, 140, 68)
                     if player_rect.colliderect(drop_item_rect):
-                        pick_text = ui_font.render(f"按下F拾取{drop['type']}", True, (0, 49, 207))
+                        pick_text = ui_font.render(f"按下F拾取{drop['type'].strip('_')}", True, (0, 49, 207))
                         canvas.blit(pick_text, (player_x-20, player_y+240))
                         if show2 == False and player.hp>0 and wall.hp>0 and keys[pygame.K_f]:
                             if rec_status == False:
@@ -1158,6 +1198,8 @@ def main():
                 if bag_status:
                     static_item(item1, 10, 300) #物品图标
                     static_item(item2, 10, 480) #物品图标
+                    rect = item1.get_rect(center=(90, 300))
+                    canvas.blit(item1, rect)
 
             #----弹药显示----
             if player.current_weapon.name != "empty":
