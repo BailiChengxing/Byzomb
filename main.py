@@ -31,7 +31,7 @@ def main():
     drop_x,drop_y = random.randint(400,4800),random.randint(-200,1500)
     drop_cooldown = random.randint(30000, 40000) #刷新后下次刷新间隔30-40秒
     current_time = pygame.time.get_ticks()
-    bag_status = True #背包状态
+    hotbar_status = True #背包状态
     is_fullscreen = False #全屏状态
 
     score = 0 #分数
@@ -190,6 +190,16 @@ def main():
     def get_font(size):
         return pygame.font.Font("codemao/SourceHanSansCN.ttf", size)
 
+    def move_item(img,x,y):#定义动类型物品绘制
+        item_draw_x = x + cam_x
+        item_draw_y = y + cam_y
+        canvas.blit(img, (item_draw_x, item_draw_y))
+    def static_item(img,x,y):#定义动类型物品绘制
+        canvas.blit(img, (x,y))
+    def center_static_item(img,x,y):#定义动类型物品绘制
+        img_rect = img.get_rect(center=(x, y))
+        canvas.blit(img, img_rect)
+
     title_font = get_font(100)
     ui_font = get_font(40)
     score_font = get_font(200)
@@ -204,8 +214,8 @@ def main():
     bgm_path2 = "codemao/music/bgm2.mp3"
     bgm_path4 = "codemao/music/bgm4.mp3"
     bgm_path5 = "codemao/music/bgm5.mp3"
-    game_over_sound = pygame.mixer.Sound("codemao/music/game_over1.wav")
-    game_over_sound.set_volume(0.2)
+    game_over_sound = pygame.mixer.Sound("codemao/music/game_over.wav")
+    game_over_sound.set_volume(0.8)
     #——————枪支音效——————
     reload_sound = pygame.mixer.Sound("codemao/music/reload.wav")
     reload_sound.set_volume(0.3)
@@ -215,7 +225,7 @@ def main():
     lmg_sound = pygame.mixer.Sound("codemao/music/lmg.wav")#机枪音效
     lmg_sound.set_volume(0.3)
     sniper_sound = pygame.mixer.Sound("codemao/music/sniper.wav")#狙击枪音效
-    sniper_sound.set_volume(0.3)
+    sniper_sound.set_volume(0.1)
     submachine_sound = pygame.mixer.Sound("codemao/music/submachine.wav")#冲锋枪音效
     submachine_sound.set_volume(0.3)
     shotgun_sound = pygame.mixer.Sound("codemao/music/shotgun.wav")#霰弹枪音效
@@ -293,20 +303,32 @@ def main():
 
     #——————道具加载——————
     empty_icon = load(file="codemao/items/icons/empty-1.png",x=160) #空道具图标
-    bandage = load(file="codemao/items/bandage.png",x=160) #绷带
-    bandage_icon = load(file="codemao/items/icons/bandage-1.png",x=160) #绷带图标
+    use_item_sign = load(file="codemao/sign.png", x =75)#道具使用指示
 
     ITEMS_CONFIG = {"bandage":{
         "name": "bandage",
-        "image": bandage,
-        "icon": bandage_icon,
-    }}
+        "image": load(file="codemao/items/bandage.png",x=160),
+        "icon": load(file="codemao/items/icons/bandage-1.png",x=160),
+    },
+    "kit":{
+        "name": "kit",
+        "image": load(file="codemao/items/kit.png",x=160),
+        "icon": load(file="codemao/items/icons/kit-1.png",x=160),
+    }
+    }
     
     class Items:
         def __init__(self, name, config):
             self.name = name
             self._image = config["image"]
             self._icon = config["icon"]
+
+        def use(self, player):
+            if self.name == "bandage":
+                player.hp += 5
+            if self.name == "kit":
+                player.hp += 15
+
         @property
         def image(self):
             return self._image
@@ -399,7 +421,7 @@ def main():
             "cool_down" : 300
         }
     }
-    test_weapon = "_950M" #测试用武器ID
+    test_weapon = "AWN" #测试用武器ID
 
     class Weapon:
         def __init__(self, name, config):
@@ -420,23 +442,23 @@ def main():
 
             #定义枪支射击声音
             if self.gun_type == "rifle":
-                self.weapon_sound = pygame.mixer.Sound(rifle_sound)
+                self.weapon_sound = rifle_sound
             elif self.gun_type == "markman_rifle":
-                self.weapon_sound = pygame.mixer.Sound(rifle_sound)
+                self.weapon_sound = rifle_sound
             elif self.gun_type == "lmg":
-                self.weapon_sound = pygame.mixer.Sound(lmg_sound)
+                self.weapon_sound = lmg_sound
             elif self.gun_type == "sniper":
-                self.weapon_sound = pygame.mixer.Sound(sniper_sound)
+                self.weapon_sound = sniper_sound
             elif self.gun_type == "submachine":
-                self.weapon_sound = pygame.mixer.Sound(submachine_sound)
+                self.weapon_sound = submachine_sound
             elif self.gun_type == "laser":
-                self.weapon_sound = pygame.mixer.Sound(laser_sound)
+                self.weapon_sound = laser_sound
             elif self.gun_type == "shotgun":
-                self.weapon_sound = pygame.mixer.Sound(shotgun_sound)
+                self.weapon_sound = shotgun_sound
             elif self.gun_type == "howitzer":
-                self.weapon_sound = pygame.mixer.Sound(howitzer_sound)
+                self.weapon_sound = howitzer_sound
             else:
-                self.weapon_sound = pygame.mixer.Sound(rifle_sound)
+                self.weapon_sound = rifle_sound
 
         def fire(self):
             if self.gun_type == "shotgun":#霰弹枪可在换弹过程中继续开枪，开枪中断换弹
@@ -576,6 +598,12 @@ def main():
             else:
                 print("hotbar is full!!")
 
+        def use_item(self, index ,player):
+            if 0 <= index < len(self.hotbar) and self.hotbar[index] is not None:
+                item = self.hotbar[index]
+                item.use(player)
+                self.hotbar[index] = None
+
         @property
         def current_weapon(self):
             return self.inventory[self.active_index]
@@ -693,16 +721,6 @@ def main():
                 highlight_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
                 highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
                 canvas.blit(highlight_surf, (x, y))
-
-    def move_item(img,x,y):#定义动类型物品绘制
-        item_draw_x = x + cam_x
-        item_draw_y = y + cam_y
-        canvas.blit(img, (item_draw_x, item_draw_y))
-    def static_item(img,x,y):#定义动类型物品绘制
-        canvas.blit(img, (x,y))
-    def center_static_item(img,x,y):#定义动类型物品绘制
-        img_rect = img.get_rect(center=(x, y))
-        canvas.blit(img, img_rect)
     
     # 角色动画加载
     PLAYER_SIZE = 200
@@ -968,7 +986,11 @@ def main():
                             if rec_status == False:
                                 player.switch_weapon()
                         elif event.key == pygame.K_e: #背包开关
-                            bag_status = not bag_status
+                            hotbar_status = not hotbar_status
+                        elif hotbar_status:
+                            if event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]: #使用物品
+                                key_idx = event.key - pygame.K_1
+                                player.use_item(key_idx, player)
 
 
         canvas.fill((0, 0, 0))
@@ -1014,8 +1036,8 @@ def main():
                 drop_opening = 0 #开箱动画计时
                 drop_status = False #是否可开箱
                 draw_open_bar= False
-                bag=0
-                bag_status=False
+                game_over_sound_status = False
+                hotbar_status=False
 
                 score = 0 #分数
                 rec_status = False #是否在更换弹药中
@@ -1233,12 +1255,14 @@ def main():
 
                 #——————道具栏绘制——————
             if wall.hp > 0 and player.hp > 0:
-                if bag_status:
-                    for i in player.hotbar:
+                if hotbar_status:
+                    for i,k in zip(player.hotbar, range(6)):
                         if i !=None:
-                            center_static_item(i.icon,90, 480+180*player.hotbar.index(i))#player.hotbar.index(i)
+                            center_static_item(i.icon,90, 380+180*k)#player.hotbar.index(i)
                         else:
-                            center_static_item(empty_icon,90, 480+180*player.hotbar.index(i))
+                            center_static_item(empty_icon,90, 380+180*k)
+                        center_static_item(use_item_sign ,160 ,400+180*k)
+                        canvas.blit(ui_font.render(f"{k+1}", True, (27, 27, 27)), (150 ,370+180*k))
 
             #----弹药显示----
             if player.current_weapon.name != "empty":
@@ -1315,11 +1339,31 @@ def main():
                     if mute_f_btn.click():
                         pygame.mixer.music.set_volume(0) # 静音
                         game_over_sound.set_volume(0) # 静音
+
+                        rifle_sound.set_volume(0)
+                        lmg_sound.set_volume(0)
+                        sniper_sound.set_volume(0)
+                        submachine_sound.set_volume(0)
+                        shotgun_sound.set_volume(0)
+                        laser_sound.set_volume(0)
+                        howitzer_sound.set_volume(0)
+                        rocket_boom_sound.set_volume(0)
+
                         mute = True
                 else:
                     if mute_t_btn.click():
                         pygame.mixer.music.set_volume(0.6) # 取消静音
-                        game_over_sound.set_volume(0.2) # 取消静音
+                        game_over_sound.set_volume(0.8) # 取消静音
+
+                        rifle_sound.set_volume(0.3)
+                        lmg_sound.set_volume(0.3)
+                        sniper_sound.set_volume(0.1)
+                        submachine_sound.set_volume(0.3)
+                        shotgun_sound.set_volume(0.3)
+                        laser_sound.set_volume(0.3)
+                        howitzer_sound.set_volume(0.3)
+                        rocket_boom_sound.set_volume(0.3)
+
                         mute = False
 
 
@@ -1351,7 +1395,6 @@ def main():
                     player.hp += 10
                 if draw_btn("-wall.hp", developer_x, final_developer_y+140, 150, 60 ,(60, 60, 60)):
                     wall.hp -= 10
-                game_over_sound
                 if draw_btn("结束", developer_x, final_developer_y+210, 150, 60, (60, 60, 60)):
                     scene = 'RESULT'
                     pygame.mixer.music.stop()
@@ -1361,7 +1404,7 @@ def main():
                 if draw_btn("weapon", developer_x, final_developer_y+350, 150, 60, (60, 60, 60)):
                     player.pick_up(test_weapon)
                 if draw_btn("+item", developer_x, final_developer_y+420, 150, 60, (60, 60, 60)):
-                    player.get_item("bandage")
+                    player.get_item("kit")
 
             #——————光标显示变化——————
             for event in pygame.event.get():
@@ -1378,7 +1421,9 @@ def main():
                     draw_custom_cursor(canvas, get_logic_mouse(), cursor)
             
             if player.hp <= 0:#玩家死亡
-                game_over_sound.play()
+                if not game_over_sound_status:
+                    game_over_sound.play()
+                    game_over_sound_status=True
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
                 grave_move+=2+grave_a #墓碑移动
@@ -1401,7 +1446,9 @@ def main():
                 move_item(main_weapon_img[player.current_weapon.name],final_x,final_y+55)
                 move_item(vice_weapon_img[player.vice_weapon.name],final_x-48,final_y-55)
                 if cam_x < 1500:
-                    game_over_sound.play()
+                    if not game_over_sound_status:
+                        game_over_sound.play()
+                        game_over_sound_status = True
                     player_world_x -= 30
                 else:
                     if wall.delay_hp <= 0 :
