@@ -1451,6 +1451,9 @@ def main():
                         game_over_sound_status = True
                     player_world_x -= 30
                 else:
+                    if cam_x == 1500 and not game_over_sound_status:
+                        game_over_sound.play()
+                        game_over_sound_status = True
                     if wall.delay_hp <= 0 :
                         wall_alpha -= 5
                         wall_img.set_alpha(wall_alpha)
