@@ -92,18 +92,6 @@ def main():
         highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
         surface.blit(highlight_surf, (x, y))
 
-    def rec_bar(surface, x, y, current_time, max_time):
-        bar_width = 15
-        bar_height = 120   
-        # 限制比例在 0 到 1 之间
-        ratio = max(0, min(current_time / max_time, 1))
-        current_bar_h = int(bar_height * ratio)
-        pygame.draw.rect(surface, (30, 30, 30), (x, y, bar_width, bar_height))
-        pygame.draw.rect(surface, (222, 222, 222),(x, y + bar_height - current_bar_h, bar_width, current_bar_h))
-        pygame.draw.rect(surface, (100, 100, 100), (x, y, bar_width, bar_height), 2)
-
-
-
     def load_ls(file,x=None,y=None):#加载图片并根据参数调整大小
         '''
         :param file:图片路径
@@ -221,15 +209,15 @@ def main():
     reload_sound.set_volume(0.3)
 
     rifle_sound = pygame.mixer.Sound("codemao/music/rifle.wav")#步枪音效
-    rifle_sound.set_volume(0.3)
+    rifle_sound.set_volume(0.5)
     lmg_sound = pygame.mixer.Sound("codemao/music/lmg.wav")#机枪音效
-    lmg_sound.set_volume(0.3)
+    lmg_sound.set_volume(0.4)
     sniper_sound = pygame.mixer.Sound("codemao/music/sniper.wav")#狙击枪音效
     sniper_sound.set_volume(0.1)
     submachine_sound = pygame.mixer.Sound("codemao/music/submachine.wav")#冲锋枪音效
     submachine_sound.set_volume(0.3)
     shotgun_sound = pygame.mixer.Sound("codemao/music/shotgun.wav")#霰弹枪音效
-    shotgun_sound.set_volume(0.3)
+    shotgun_sound.set_volume(0.5)
     laser_sound = pygame.mixer.Sound("codemao/music/laser.wav")#激光枪音效
     laser_sound.set_volume(0.3)
     howitzer_sound = pygame.mixer.Sound("codemao/music/howitzer.wav")#榴弹炮音效
@@ -300,6 +288,14 @@ def main():
     num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
     num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
+
+    #——————僵尸加载——————
+    common_img=[load(file="codemao\zombie\common1.png",x=225),load(file="codemao\zombie\common2.png",x=225)]
+    crazy_img=[load(file="codemao\zombie\crazy1.png",x=225),load(file="codemao\zombie\crazy2.png",x=225)]
+    evil_img=[load(file="codemao\zombie\evil1.png",x=225),load(file="codemao\zombie\evil2.png",x=225)]
+    iron_img=[load(file="codemao\zombie\iron1.png",x=225),load(file="codemao\zombie\iron2.png",x=225)]
+    virus_img=[load(file=r"codemao\zombie\virus1.png",x=225),load(file=r"codemao\zombie\virus2.png",x=225)]
+    ghost_img=[load(file="codemao\zombie\ghost.png",x=225),load(file="codemao\zombie\ghost.png",x=225)]
 
     #——————道具加载——————
     empty_icon = load(file="codemao/items/icons/empty-1.png",x=160) #空道具图标
@@ -721,6 +717,69 @@ def main():
                 highlight_surf = pygame.Surface((int(bar_width * ratio), bar_height // 2), pygame.SRCALPHA)
                 highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
                 canvas.blit(highlight_surf, (x, y))
+
+
+    #僵尸加载
+    ZOMBIE_CONFIG={
+        "common":{
+            "name":"common",
+            "img":common_img,
+            "hp":200,
+            "speed":20
+        }
+    }
+    class Zombie:
+        def __init__(self,config):
+            self.name=config["name"]
+            self.img=config["img"]
+            self.max_hp=config["hp"]
+            self.current_hp=config["hp"]
+            self.speed=config["speed"]
+            self.x=WORLD_WIDTH
+            self.y=WORLD_HEIGHT - 225#减去的数值等于其大小
+            self.rect
+
+        def take_damage(self, amount):
+                """受伤逻辑"""
+                self.current_hp -= amount
+
+        def update(self):
+            """每一帧的动作：比如向左移动"""
+            self.x -= self.speed  # 简单的移动逻辑
+            self.rect = pygame.Rect(self.x, self.y, 225, 225)
+            if player_rect.colliderect(self.rect):
+                if current_time - last_hit_time > hit_cooldown:
+                    player.hp -= 5
+                    last_hit_time = current_time #更新被撞时间戳
+    
+
+    class Manage:
+        def __init__(self,config):
+            self.config=config
+            self.zombie_list=[]
+
+        def add(self,name):
+            new_zombie=Zombie(self.config[name])
+            self.zombie_list.append(new_zombie)
+            
+        def update_all(self):
+            for zombie in self.zombie_list:
+                zombie.update() #
+            # 2. 创建一个空列表，用来存放“还活着”的僵尸
+            alive_zombies = []
+            # 3. 遍历当前的僵尸名单
+            for zombie in self.zombie_list:
+                # 检查血量是否大于 0
+                if zombie.current_hp > 0 and  zombie.x > -475:
+                    # 如果活着，就把它放进临时名单里
+                    alive_zombies.append(zombie)
+                elif zombie.current_hp < 0:
+                    print(f"{zombie.name} is dead")
+                elif zombie.current_hp > 0 and zombie.x <-475:
+                    print("已离开边界")
+                
+            # 4. 最后，用这个只包含活僵尸的新名单替换掉旧名单
+            self.zombie_list = alive_zombies
     
     # 角色动画加载
     PLAYER_SIZE = 200
@@ -742,7 +801,7 @@ def main():
     ENEMY_SIZE = 225
     ENEMY_ANIM_SPEED = 30 
     enemy_frames = []
-    e_files = ["codemao/zombie/zombie1.png", "codemao/zombie/zombie2.png"]
+    e_files = ["codemao\zombie\common1.png", "codemao\zombie\common2.png"]
 
     for i, f in enumerate(e_files):
         if os.path.exists(f):
@@ -1046,6 +1105,7 @@ def main():
                 last_mouse_move_time = pygame.time.get_ticks()#记录光标最后移动时间
 
                 player = Player(WEAPON_CONFIG) #实例化玩家
+                zombie_manager = Manage(ZOMBIE_CONFIG)
                 wall = Wall() #实例化城墙
 
                 player_world_x, player_world_y = WORLD_WIDTH // 2, WORLD_HEIGHT // 2
@@ -1211,6 +1271,8 @@ def main():
                     e_idx = (alive_ticks // ENEMY_ANIM_SPEED) % len(enemy_frames)
                     enemy_frames[e_idx].set_alpha(e["alpha"])
                     canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
+            
+            #——————僵尸绘制——————
 
 
             
@@ -1355,11 +1417,11 @@ def main():
                         pygame.mixer.music.set_volume(0.6) # 取消静音
                         game_over_sound.set_volume(0.8) # 取消静音
 
-                        rifle_sound.set_volume(0.3)
-                        lmg_sound.set_volume(0.3)
+                        rifle_sound.set_volume(0.5)
+                        lmg_sound.set_volume(0.5)
                         sniper_sound.set_volume(0.1)
                         submachine_sound.set_volume(0.3)
-                        shotgun_sound.set_volume(0.3)
+                        shotgun_sound.set_volume(0.5)
                         laser_sound.set_volume(0.3)
                         howitzer_sound.set_volume(0.3)
                         rocket_boom_sound.set_volume(0.3)
