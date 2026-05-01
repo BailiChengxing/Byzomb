@@ -273,11 +273,47 @@ def main():
     #加载树林
     tree1=load(file="codemao/tree1.png",y=int(move_y+800)) #左树
     tree2=load(file="codemao/tree2.png",y=int(move_y+2700)) #右树
+
     wall_img=load(file="codemao/wall.png",y=int(move_y+1600)) #墙
     wall_life=load(file="codemao/wall_life.png",x=450) #墙血量
-    zombie_effect=load_ls(file=["codemao/effect/1.png","codemao/effect/2.png","codemao/effect/3.png","codemao/effect/4.png"],x=100) #僵尸特效
+
 
     cursor = load(file="codemao/cursor.png",x=60) #自定义鼠标指针
+
+    grave=load(file="codemao/grave.png",y=230) #墓碑
+
+    #加载空投
+    drop1=load(file="codemao/drop1.png",y=660)
+    drop2=load(file="codemao/drop2.png",y=660)
+
+    #——————加载数字——————
+    num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
+    num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
+    num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
+
+    #——————道具加载——————
+    empty_icon = load(file="codemao/items/icons/empty-1.png",x=160) #空道具图标
+    bandage = load(file="codemao/items/bandage.png",x=160) #绷带
+    bandage_icon = load(file="codemao/items/icons/bandage-1.png",x=160) #绷带图标
+
+    ITEMS_CONFIG = {"bandage":{
+        "name": "bandage",
+        "image": bandage,
+        "icon": bandage_icon,
+    }}
+    
+    class Items:
+        def __init__(self, name, config):
+            self.name = name
+            self._image = config["image"]
+            self._icon = config["icon"]
+        @property
+        def image(self):
+            return self._image
+        @property
+        def icon(self):
+            return self._icon
+
 
     #——————武器加载——————
     main_weapon_img=load_main_weapon(empty="codemao/weapon/empty.png",
@@ -290,6 +326,7 @@ def main():
                                     ) #主武器字典
     vice_weapon_img=load_vice_weapons(main_weapon_img) #副武器字典
     weapon_list=list(main_weapon_img) #主武器列表
+
     WEAPON_CONFIG = {
         "empty": {
             "name": "空手",
@@ -495,6 +532,7 @@ def main():
             mondragon = Weapon("mondragon", copy.deepcopy(config["mondragon"]))
             empty = Weapon("empty", copy.deepcopy(config["empty"]))
             self.inventory = [mondragon, empty]
+            self.hotbar = [None, None, None, None, None,None] # 预留的快捷栏
             self.active_index = 0
             self.sniper_mode = False
 
@@ -528,6 +566,15 @@ def main():
                 self.sniper_mode = True
             else:
                 self.sniper_mode = False
+
+        def get_item(self, item_id):
+            new_item = Items(item_id, ITEMS_CONFIG[item_id])
+            for i in range(len(self.hotbar)):
+                if self.hotbar[i] is None:
+                    self.hotbar[i] = new_item
+                    break
+            else:
+                print("hotbar is full!!")
 
         @property
         def current_weapon(self):
@@ -647,29 +694,15 @@ def main():
                 highlight_surf.fill((255, 255, 255, 40)) # 最后一个值 40 是透明度，非常淡
                 canvas.blit(highlight_surf, (x, y))
 
-
-
-
-
-
-    grave=load(file="codemao/grave.png",y=230) #墓碑
-    #加载空投
-    drop1=load(file="codemao/drop1.png",y=660)
-    drop2=load(file="codemao/drop2.png",y=660)
-
-    num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
-    num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
-    num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
-
-    item1=load(file="codemao/items/icons/boom-1.png",x=160) #物品1
-    item2=load(file="codemao/items/icons/kit-1.png",x=160) #物品2
-
     def move_item(img,x,y):#定义动类型物品绘制
         item_draw_x = x + cam_x
         item_draw_y = y + cam_y
         canvas.blit(img, (item_draw_x, item_draw_y))
     def static_item(img,x,y):#定义动类型物品绘制
         canvas.blit(img, (x,y))
+    def center_static_item(img,x,y):#定义动类型物品绘制
+        img_rect = img.get_rect(center=(x, y))
+        canvas.blit(img, img_rect)
     
     # 角色动画加载
     PLAYER_SIZE = 200
@@ -916,7 +949,10 @@ def main():
 
             if event.type == pygame.KEYDOWN:
                 if scene == 'GAME' and player.hp > 0 and wall.hp > 0:
-                    if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
+                    if event.key == pygame.K_F3: #开发者模式开关
+                        developer_mode = not developer_mode
+
+                    elif event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
                         show2 = not show2
                         if show2:
                             # 记录开始暂停的时间点
@@ -924,16 +960,16 @@ def main():
                         else:
                             # 取消暂停时，计算刚才停了多久，并累加到总暂停时间里
                             total_paused_time += (pygame.time.get_ticks() - start_pause_time)
-                    if event.key == pygame.K_F3: #开发者模式开关
-                        developer_mode = not developer_mode
-                    if event.key == pygame.K_e: #背包开关
-                        bag_status = not bag_status
-                    if not show2:
+
+                    elif not show2:
                         if event.key == pygame.K_r: #换弹
                             player.current_weapon.reload()
-                        if event.key == pygame.K_q: #换武器
+                        elif event.key == pygame.K_q: #换武器
                             if rec_status == False:
                                 player.switch_weapon()
+                        elif event.key == pygame.K_e: #背包开关
+                            bag_status = not bag_status
+
 
         canvas.fill((0, 0, 0))
 
@@ -1180,6 +1216,7 @@ def main():
                         final_angle = -(math.degrees(rads))
                         draw_rotating_gun(canvas, main_weapon_img[player.current_weapon.name],[player_x+156,player_y+120-10*p_idx], final_angle)
 
+
             move_item(fence,0,2190) #下围栏
             move_item(tree1,-830,-630) #左树
             move_item(tree2,5400,-1900)#右树
@@ -1193,13 +1230,15 @@ def main():
                 player.draw_health_bar(canvas, LOGIC_W//2-120, LOGIC_H//2-160)
             
             player.current_weapon.update() # 更新武器状态（如换弹计时,由于需要换弹药进度条，所以要放在下面，确保图层在上面）
-            #----背包显示----
+
+                #——————道具栏绘制——————
             if wall.hp > 0 and player.hp > 0:
                 if bag_status:
-                    static_item(item1, 10, 300) #物品图标
-                    static_item(item2, 10, 480) #物品图标
-                    rect = item1.get_rect(center=(90, 300))
-                    canvas.blit(item1, rect)
+                    for i in player.hotbar:
+                        if i !=None:
+                            center_static_item(i.icon,90, 480+180*player.hotbar.index(i))#player.hotbar.index(i)
+                        else:
+                            center_static_item(empty_icon,90, 480+180*player.hotbar.index(i))
 
             #----弹药显示----
             if player.current_weapon.name != "empty":
@@ -1319,8 +1358,10 @@ def main():
                     pygame.time.delay(200)
                 if draw_btn("add_score", developer_x, final_developer_y+280, 150, 60, (60, 60, 60)):
                     score +=1
-                if draw_btn("weapon", developer_x, final_developer_y+410, 150, 60, (60, 60, 60)):
+                if draw_btn("weapon", developer_x, final_developer_y+350, 150, 60, (60, 60, 60)):
                     player.pick_up(test_weapon)
+                if draw_btn("+item", developer_x, final_developer_y+420, 150, 60, (60, 60, 60)):
+                    player.get_item("bandage")
 
             #——————光标显示变化——————
             for event in pygame.event.get():
