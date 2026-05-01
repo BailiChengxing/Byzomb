@@ -34,6 +34,7 @@ def main():
     hotbar_status = True #背包状态
     is_fullscreen = False #全屏状态
 
+    last_hit_time = 0 # 重置被撞时间戳
     score = 0 #分数
     score_x ,score_y = 2800,10 #分数显示位置
     current_mag_x ,current_mag_y = 70,10 #当前弹匣显示位置
@@ -288,14 +289,6 @@ def main():
     num_img = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=70) #数字图片列表
     num_img2 = load_ls(["codemao/num/0.png","codemao/num/1.png","codemao/num/2.png","codemao/num/3.png","codemao/num/4.png","codemao/num/5.png","codemao/num/6.png","codemao/num/7.png","codemao/num/8.png","codemao/num/9.png"],x=50) #数字图片列表
     num_img0 = load_ls(["codemao/num0/0.png","codemao/num0/1.png","codemao/num0/2.png","codemao/num0/3.png","codemao/num0/4.png","codemao/num0/5.png","codemao/num0/6.png","codemao/num0/7.png","codemao/num0/8.png","codemao/num0/9.png"],x=50) #数字图片列表
-
-    #——————僵尸加载——————
-    common_img=[load(file="codemao\zombie\common1.png",x=225),load(file="codemao\zombie\common2.png",x=225)]
-    crazy_img=[load(file="codemao\zombie\crazy1.png",x=225),load(file="codemao\zombie\crazy2.png",x=225)]
-    evil_img=[load(file="codemao\zombie\evil1.png",x=225),load(file="codemao\zombie\evil2.png",x=225)]
-    iron_img=[load(file="codemao\zombie\iron1.png",x=225),load(file="codemao\zombie\iron2.png",x=225)]
-    virus_img=[load(file=r"codemao\zombie\virus1.png",x=225),load(file=r"codemao\zombie\virus2.png",x=225)]
-    ghost_img=[load(file="codemao\zombie\ghost.png",x=225),load(file="codemao\zombie\ghost.png",x=225)]
 
     #——————道具加载——————
     empty_icon = load(file="codemao/items/icons/empty-1.png",x=160) #空道具图标
@@ -563,6 +556,18 @@ def main():
             self.bool_add=False
             self.bool_sub=False
 
+            #——————其他属性——————
+            self._last_hit_time= 0
+
+
+        #——————受伤冷却时间——————
+        @property
+        def last_hit_time(self):
+            return self._last_hit_time
+        
+        @last_hit_time.setter
+        def last_hit_time(self, value):
+            self._last_hit_time = value
 
         #——————枪支方法——————
         def switch_weapon(self):
@@ -723,21 +728,58 @@ def main():
     ZOMBIE_CONFIG={
         "common":{
             "name":"common",
-            "img":common_img,
+            "img":[load(file="codemao\zombie\common1.png",x=225),load(file="codemao\zombie\common2.png",x=225)],
             "hp":200,
-            "speed":20
+            "speed":15
+        },
+        "crazy":{
+            "name":"crazy",
+            "img":[load(file="codemao\zombie\crazy1.png",x=225),load(file="codemao\zombie\crazy2.png",x=225)],
+            "hp":100,
+            "speed":18
+        },
+        "evil":{
+            "name":"evil",
+            "img":[load(file="codemao\zombie\evil1.png",x=225),load(file="codemao\zombie\evil2.png",x=225)],
+            "hp":100,
+            "speed":12
+        },
+        "iron":{
+            "name":"iron",
+            "img":[load(file="codemao\zombie\iron1.png",x=225),load(file="codemao\zombie\iron2.png",x=225)],
+            "hp":500,
+            "speed":12
+        },
+        "ghost":{
+            "name":"ghost",
+            "img":[load(file="codemao\zombie\ghost.png",x=225),load(file="codemao\zombie\ghost.png",x=225)],
+            "hp":150,
+            "speed":12
+        },
+        "virus":{
+            "name":"virus",
+            "img":[load(file=r"codemao\zombie\virus1.png",x=225),load(file=r"codemao\zombie\virus2.png",x=225)],
+            "hp":700,
+            "speed":12
         }
+
     }
     class Zombie:
         def __init__(self,config):
             self.name=config["name"]
             self.img=config["img"]
+            self.img = [image.copy() for image in config["img"]]
             self.max_hp=config["hp"]
             self.current_hp=config["hp"]
             self.speed=config["speed"]
-            self.x=WORLD_WIDTH
-            self.y=WORLD_HEIGHT - 225#减去的数值等于其大小
-            self.rect
+            self.x=WORLD_WIDTH- 225
+            self.alpha=255
+            self.y=random.randint(0, WORLD_HEIGHT - 225)
+            self.idx=0
+            self.rect = None
+            self.size= 225
+            self.alive_time = None
+            self.last_switch_time = 0
 
         def take_damage(self, amount):
                 """受伤逻辑"""
@@ -745,12 +787,26 @@ def main():
 
         def update(self):
             """每一帧的动作：比如向左移动"""
-            self.x -= self.speed  # 简单的移动逻辑
-            self.rect = pygame.Rect(self.x, self.y, 225, 225)
-            if player_rect.colliderect(self.rect):
-                if current_time - last_hit_time > hit_cooldown:
-                    player.hp -= 5
-                    last_hit_time = current_time #更新被撞时间戳
+            if wall.hp > 0 and player.hp > 0 and show2 == False:#确保游戏没有暂停
+
+                canvas.blit(self.img[self.idx], (self.x+ cam_x, self.y+ cam_y))
+                self.x -= self.speed  # 移动逻辑
+
+                if current_time - self.last_switch_time > 300:
+                    self.idx= 1 - self.idx
+                    self.last_switch_time = current_time
+
+                if self.x < -self.size-250:
+                    self.alpha -=5
+                    self.img[self.idx].set_alpha(self.alpha)
+                    if self.alpha <=0:
+                        self.current_hp = 0
+
+                self.rect = pygame.Rect(self.x, self.y, 225, 225)#碰撞逻辑
+                if player_rect.colliderect(self.rect):
+                    if current_time - player.last_hit_time > hit_cooldown:
+                        player.hp -= 5
+                        player.last_hit_time= current_time
     
 
     class Manage:
@@ -770,17 +826,15 @@ def main():
             # 3. 遍历当前的僵尸名单
             for zombie in self.zombie_list:
                 # 检查血量是否大于 0
-                if zombie.current_hp > 0 and  zombie.x > -475:
+                if zombie.current_hp > 0:
                     # 如果活着，就把它放进临时名单里
                     alive_zombies.append(zombie)
-                elif zombie.current_hp < 0:
+                else:
                     print(f"{zombie.name} is dead")
-                elif zombie.current_hp > 0 and zombie.x <-475:
-                    print("已离开边界")
-                
             # 4. 最后，用这个只包含活僵尸的新名单替换掉旧名单
             self.zombie_list = alive_zombies
-    
+
+
     # 角色动画加载
     PLAYER_SIZE = 200
     ANIM_SPEED = 20
@@ -1168,12 +1222,6 @@ def main():
                     canvas.blit(tile_img2, (x + offset_x, y + offset_y))
             move_item(fence,0,-100) #上围栏
 
-            # 敌人生成
-            if wall.hp > 0 and player.hp > 0 and show2 == False:
-                if frame_counter % SPAWN_RATE == 0:
-                    spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
-                    enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter, "alpha": 255})
-
             # --- 碰撞检测准备 ---
             # 玩家在逻辑世界中的矩形 (x, y, w, h)
             player_rect = pygame.Rect(player_world_x, player_world_y, PLAYER_SIZE, PLAYER_SIZE)
@@ -1249,12 +1297,20 @@ def main():
 
 
             # --- 敌人更新与绘制 ---
+
+            # 敌人生成
+            if wall.hp > 0 and player.hp > 0 and show2 == False:
+                if frame_counter % SPAWN_RATE == 0:
+                    spawn_y = random.randint(0, WORLD_HEIGHT - ENEMY_SIZE)
+                    enemies.append({"x": WORLD_WIDTH, "y": spawn_y, "born": frame_counter, "alpha": 255})
+
             for e in enemies[:]:
                 draw_x, draw_y = e["x"] + cam_x, e["y"] + cam_y
                 if wall.hp > 0 and player.hp > 0 and show2 == False:
                     e["x"] -= ENEMY_SPEED 
                     # 创建敌人的矩形进行碰撞判定
                     enemy_rect = pygame.Rect(e["x"], e["y"], ENEMY_SIZE, ENEMY_SIZE)
+
                     # 【碰撞逻辑】
                     if player_rect.colliderect(enemy_rect):
                         if current_time - last_hit_time > hit_cooldown:
@@ -1273,8 +1329,8 @@ def main():
                     canvas.blit(enemy_frames[e_idx], (draw_x, draw_y))
             
             #——————僵尸绘制——————
-
-
+            zombie_manager.update_all()
+            
             
             if wall.hp > 0:
                 # 玩家绘制
@@ -1438,17 +1494,15 @@ def main():
                 location_text = ui_font.render(f"cam_x: {cam_x}, cam_y: {cam_y}", True, (255, 255, 0))
                 location_text2 = ui_font.render(f"player_world_x: {player_world_x}, player_world_y: {player_world_y}", True, (255, 255, 0))
                 frame_counter_text = ui_font.render(f"Toatal_pause_time: {total_paused_time}", True, (255, 255, 0))
-                wall.hp_text = ui_font.render(f"Wall HP: {wall.hp}", True, (255, 255, 0))
-                wall.delay_hp_text = ui_font.render(f"Wall Delay HP: {wall.delay_hp}", True, (255, 255, 0))
+                wall_delay_hp_text = ui_font.render(f"Wall Delay HP: {wall.delay_hp}", True, (255, 255, 0))
                 develop_show_list=[
                     fps_text,
                     current_time_text,
                     health_text,
-                    wall.hp_text,
                     location_text,
                     location_text2,
                     frame_counter_text,
-                    wall.delay_hp_text
+                    wall_delay_hp_text
                 ]
                 for i, text in enumerate(develop_show_list):
                     canvas.blit(text, (developer_x, developer_y + i*40))
@@ -1467,6 +1521,8 @@ def main():
                     player.pick_up(test_weapon)
                 if draw_btn("+item", developer_x, final_developer_y+420, 150, 60, (60, 60, 60)):
                     player.get_item("kit")
+                if draw_btn("+zombie", developer_x, final_developer_y+490, 150, 60, (60, 60, 60)):
+                    zombie_manager.add("crazy")
 
             #——————光标显示变化——————
             for event in pygame.event.get():
