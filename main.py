@@ -337,11 +337,13 @@ def main():
                                     ) #主武器字典
     vice_weapon_img=load_vice_weapons(main_weapon_img) #副武器字典
     weapon_list=list(main_weapon_img) #主武器列表
+    bullet_img=load(r"codemao\bullet.png",x=20)
 
     WEAPON_CONFIG = {
         "empty": {
             "name": "空手",
             "damage": 0,
+            "speed":0,
             "gun_type": "empty",
             "weight": 0,
             "mag_capacity": 0,
@@ -352,6 +354,7 @@ def main():
         "mondragon": {
             "name": "mondragon",
             "damage": 10,
+            "speed":200,
             "gun_type": "rifle",
             "weight": 6,
             "mag_capacity": 12,
@@ -362,6 +365,7 @@ def main():
         "AK47": {
             "name": "AK47",
             "damage": 8,
+            "speed":200,
             "gun_type": "rifle",
             "weight": 7,
             "mag_capacity": 30,
@@ -372,6 +376,7 @@ def main():
         "M249": {
             "name": "M249",
             "damage": 6,
+            "speed":200,
             "gun_type": "lmg",
             "weight": 15,
             "mag_capacity": 100,
@@ -382,6 +387,7 @@ def main():
         "AWN": {
             "name": "AWN",
             "damage": 15,
+            "speed":200,
             "gun_type": "sniper",
             "weight": 13,
             "mag_capacity": 5,
@@ -392,6 +398,7 @@ def main():
         "QBU": {
             "name": "QBU",
             "damage": 12,
+            "speed":200,
             "gun_type": "markman_rifle",
             "weight": 8,
             "mag_capacity": 10,
@@ -402,6 +409,7 @@ def main():
         "_950M": {
             "name": "950M",
             "damage": 20,
+            "speed":200,
             "gun_type": "shotgun",
             "weight": 9,
             "mag_capacity": 5,
@@ -534,10 +542,23 @@ def main():
         def reloading(self, value):
             self._reloading = value
 
+    class Bullet(pygame.sprite.Sprite):
+        def __init__(self,speed,damage,x,y):
+            super().__init__()
+            self.image=bullet_img
+            self.rect = self.image.get_rect(center=(x, y))
+            self.speed=speed
+            self.damage=damage
+
+        def update(self):
+            self.rect.x += self.speed
+            # 超出屏幕自动销毁
+            if self.rect.x > 1280: 
+                self.kill() # 从所有精灵组中移除
+
 
     class Player:
         def __init__(self, config):
-
             #——————枪支属性——————
             self.config = config
             mondragon = Weapon("mondragon", copy.deepcopy(config["mondragon"]))
@@ -764,10 +785,10 @@ def main():
         }
 
     }
-    class Zombie:
+    class Zombie(pygame.sprite.Sprite):
         def __init__(self,config):
+            super().__init__()
             self.name=config["name"]
-            self.img=config["img"]
             self.img = [image.copy() for image in config["img"]]
             self.max_hp=config["hp"]
             self.current_hp=config["hp"]
